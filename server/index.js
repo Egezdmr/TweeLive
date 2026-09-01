@@ -134,6 +134,104 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Register endpoint
+app.post('/api/register', async (req, res) => {
+  const { firstName, lastName, username, email, password, gender, birthDate } = req.body;
+
+  // Validate required fields
+  if (!firstName || !lastName || !username || !email || !password || gender === undefined || !birthDate) {
+    return res.status(400).json({
+      success: false,
+      message: 'Alla fält är obligatoriska'
+    });
+  }
+
+  try {
+    // Check if username already exists
+    const userCheck = await pool.query('SELECT username FROM users WHERE username = $1', [username]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Användarnamnet är redan taget'
+      });
+    }
+
+    // Check if email already exists
+    const emailCheck = await pool.query('SELECT email FROM users WHERE email = $1', [email]);
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'E-postadressen är redan registrerad'
+      });
+    }
+
+    // Insert new user
+    const result = await pool.query(
+      'INSERT INTO users (first_name, last_name, username, email, password, gender, birth_date) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username, email',
+      [firstName, lastName, username, email, password, gender, birthDate]
+    );
+
+    res.json({
+      success: true,
+      message: 'Registrering lyckades!',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    // Handle database constraint errors
+    if (error.code === '23505') { // Unique violation
+      if (error.detail && error.detail.includes('email')) {
+        return res.status(400).json({
+          success: false,
+          message: 'E-postadressen är redan registrerad'
+        });
+      } else if (error.detail && error.detail.includes('username')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Användarnamnet är redan taget'
+        });
+      }
+    }
+
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registreringen misslyckades: ' + error.message
+    });
+  }
+});
+
+// Check if username exists
+app.get('/api/check-username/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const result = await pool.query('SELECT username FROM users WHERE username = $1', [username]);
+    res.json({
+      exists: result.rows.length > 0
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
+  }
+});
+
+// Check if email exists
+app.get('/api/check-email/:email', async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    const result = await pool.query('SELECT email FROM users WHERE email = $1', [email]);
+    res.json({
+      exists: result.rows.length > 0
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

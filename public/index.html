@@ -21,11 +21,39 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.2);
       width: 100%;
       max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     h1 {
       text-align: center;
       color: #333;
       margin-bottom: 30px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: #e0e0e0;
+      color: #333;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    .tab-btn.active {
+      background: #667eea;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
     }
     .form-group {
       margin-bottom: 15px;
@@ -35,8 +63,9 @@
       margin-bottom: 5px;
       color: #333;
       font-weight: bold;
+      font-size: 13px;
     }
-    input {
+    input, select {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
@@ -44,10 +73,32 @@
       font-size: 14px;
       box-sizing: border-box;
     }
-    input:focus {
+    input:focus, select:focus {
       outline: none;
       border-color: #667eea;
       box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+    }
+    .validation-msg {
+      font-size: 12px;
+      margin-top: 3px;
+      display: none;
+    }
+    .validation-msg.error {
+      color: #d32f2f;
+      display: block;
+    }
+    .validation-msg.success {
+      color: #388e3c;
+      display: block;
+    }
+    .validation-msg a {
+      color: #d32f2f;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .validation-msg small {
+      display: block;
+      margin-top: 3px;
     }
     .button-group {
       display: flex;
@@ -72,11 +123,11 @@
       background-color: #5568d3;
     }
     .btn-signup {
-      background-color: #e0e0e0;
-      color: #333;
+      background-color: #667eea;
+      color: white;
     }
     .btn-signup:hover {
-      background-color: #d0d0d0;
+      background-color: #5568d3;
     }
     .message {
       margin-top: 20px;
@@ -107,88 +158,310 @@
   <div class="container">
     <h1>🎉 TweeLive</h1>
 
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="identifier">Användarnamn eller E-post:</label>
-        <input
-          type="text"
-          id="identifier"
-          name="identifier"
-          placeholder="Ange användarnamn eller e-post"
-          required
-        >
-      </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('login')">Logga in</button>
+      <button class="tab-btn" onclick="switchTab('signup')">Registrera</button>
+    </div>
 
-      <div class="form-group">
-        <label for="password">Lösenord:</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          placeholder="Ange lösenord"
-          required
-        >
-      </div>
+    <!-- Login Tab -->
+    <div id="login" class="tab-content active">
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="identifier">Användarnamn eller E-post:</label>
+          <input
+            type="text"
+            id="identifier"
+            name="identifier"
+            placeholder="Ange användarnamn eller e-post"
+            required
+          >
+        </div>
 
-      <div class="button-group">
-        <button type="submit" class="btn-signin">Logga in</button>
-        <button type="button" class="btn-signup" disabled>Registrera</button>
-      </div>
-    </form>
+        <div class="form-group">
+          <label for="password">Lösenord:</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Ange lösenord"
+            required
+          >
+        </div>
 
-    <div id="message" class="message"></div>
+        <button type="submit" class="btn-signin" style="width: 100%; margin-top: 20px;">Logga in</button>
+      </form>
+
+      <div id="loginMessage" class="message"></div>
+    </div>
+
+    <!-- Signup Tab -->
+    <div id="signup" class="tab-content">
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="firstName">Förnamn:</label>
+          <input type="text" id="firstName" name="firstName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">Efternamn:</label>
+          <input type="text" id="lastName" name="lastName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="regUsername">Användarnamn:</label>
+          <input type="text" id="regUsername" name="username" required>
+          <div id="usernameMsg" class="validation-msg"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">E-postadress:</label>
+          <input type="email" id="email" name="email" required>
+          <div id="emailMsg" class="validation-msg"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="regPassword">Lösenord:</label>
+          <input type="password" id="regPassword" name="password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="passwordConfirm">Bekräfta lösenord:</label>
+          <input type="password" id="passwordConfirm" name="passwordConfirm" required>
+          <div id="passwordMsg" class="validation-msg"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="gender">Kön:</label>
+          <select id="gender" name="gender" required>
+            <option value="">-- Välj --</option>
+            <option value="0">Erkek (Man)</option>
+            <option value="1">Kadin (Kvinna)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="birthDate">Födelsedatum:</label>
+          <input type="date" id="birthDate" name="birthDate" required>
+        </div>
+
+        <button type="submit" class="btn-signup" style="width: 100%; margin-top: 20px;">Registrera</button>
+      </form>
+
+      <div id="signupMessage" class="message"></div>
+    </div>
   </div>
 
   <script>
-    const form = document.getElementById('loginForm');
-    const messageEl = document.getElementById('message');
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tab).classList.add('active');
+      event.target.classList.add('active');
+    }
 
-    form.addEventListener('submit', async (e) => {
+    // Login form
+    const loginForm = document.getElementById('loginForm');
+    const loginMessage = document.getElementById('loginMessage');
+
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const identifier = document.getElementById('identifier').value;
       const password = document.getElementById('password').value;
 
-      // Show loading message
-      messageEl.textContent = 'Loggar in...';
-      messageEl.className = 'message loading';
-      messageEl.style.display = 'block';
+      loginMessage.textContent = 'Loggar in...';
+      loginMessage.className = 'message loading';
+      loginMessage.style.display = 'block';
 
       try {
         const response = await fetch('/api/login', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifier, password })
         });
 
         const data = await response.json();
 
         if (data.success) {
-          messageEl.textContent = '✅ ' + data.message;
-          messageEl.className = 'message success';
-          messageEl.style.display = 'block';
-
-          // Redirect after 2 seconds
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 2000);
+          loginMessage.textContent = '✅ ' + data.message;
+          loginMessage.className = 'message success';
+          setTimeout(() => window.location.href = '/dashboard', 2000);
         } else {
-          messageEl.textContent = '❌ ' + data.message;
-          messageEl.className = 'message error';
-          messageEl.style.display = 'block';
-
-          // Clear form and redirect after 3 seconds
+          loginMessage.textContent = '❌ ' + data.message;
+          loginMessage.className = 'message error';
           setTimeout(() => {
-            form.reset();
-            messageEl.style.display = 'none';
+            loginForm.reset();
+            loginMessage.style.display = 'none';
           }, 3000);
         }
       } catch (error) {
-        messageEl.textContent = '❌ Ett fel uppstod: ' + error.message;
-        messageEl.className = 'message error';
-        messageEl.style.display = 'block';
+        loginMessage.textContent = '❌ Ett fel uppstod';
+        loginMessage.className = 'message error';
+      }
+    });
+
+    // Signup form
+    const signupForm = document.getElementById('signupForm');
+    const signupMessage = document.getElementById('signupMessage');
+    const usernameInput = document.getElementById('regUsername');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('regPassword');
+    const passwordConfirmInput = document.getElementById('passwordConfirm');
+
+    // Real-time validation
+    usernameInput.addEventListener('blur', checkUsername);
+    emailInput.addEventListener('input', validateEmailRealtime);
+    passwordConfirmInput.addEventListener('input', validatePasswordsRealtime);
+
+    async function checkUsername() {
+      const username = usernameInput.value.trim();
+      const msg = document.getElementById('usernameMsg');
+
+      if (!username) {
+        msg.style.display = 'none';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/check-username/${username}`);
+        const data = await response.json();
+
+        if (data.exists) {
+          msg.textContent = '❌ Användarnamnet är redan taget';
+          msg.className = 'validation-msg error';
+        } else {
+          msg.textContent = '✅ Användarnamnet är tillgängligt';
+          msg.className = 'validation-msg success';
+        }
+      } catch (error) {
+        msg.textContent = '❌ Kunde inte verifiera användarnamn';
+        msg.className = 'validation-msg error';
+      }
+    }
+
+    async function validateEmailRealtime() {
+      const email = emailInput.value.trim();
+      const msg = document.getElementById('emailMsg');
+
+      if (!email) {
+        msg.style.display = 'none';
+        return;
+      }
+
+      // Validate format first
+      if (!isValidEmail(email)) {
+        msg.textContent = '❌ Ogiltig e-postformat';
+        msg.className = 'validation-msg error';
+        return;
+      }
+
+      // Check if email exists in database
+      try {
+        const response = await fetch(`/api/check-email/${encodeURIComponent(email)}`);
+        const data = await response.json();
+
+        if (data.exists) {
+          msg.innerHTML = '❌ E-postadressen är redan registrerad<br><small>Försök <a href="#" onclick="switchTab(\'login\'); return false;">logga in</a> istället</small>';
+          msg.className = 'validation-msg error';
+        } else {
+          msg.textContent = '✅ E-postadressen är tillgänglig';
+          msg.className = 'validation-msg success';
+        }
+      } catch (error) {
+        msg.textContent = '❌ Kunde inte verifiera e-post';
+        msg.className = 'validation-msg error';
+      }
+    }
+
+    function validatePasswordsRealtime() {
+      const password = passwordInput.value;
+      const confirm = passwordConfirmInput.value;
+      const msg = document.getElementById('passwordMsg');
+
+      if (!confirm) {
+        msg.style.display = 'none';
+        return;
+      }
+
+      if (password === confirm && password.length > 0) {
+        msg.textContent = '✅ Lösenorden matchar';
+        msg.className = 'validation-msg success';
+      } else if (password.length > 0) {
+        msg.textContent = '❌ Lösenorden matchar inte';
+        msg.className = 'validation-msg error';
+      } else {
+        msg.style.display = 'none';
+      }
+    }
+
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Submit signup form
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const firstName = document.getElementById('firstName').value;
+      const lastName = document.getElementById('lastName').value;
+      const username = usernameInput.value;
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      const passwordConfirm = passwordConfirmInput.value;
+      const gender = document.getElementById('gender').value;
+      const birthDate = document.getElementById('birthDate').value;
+
+      // Validate
+      if (password !== passwordConfirm) {
+        signupMessage.textContent = '❌ Lösenorden matchar inte';
+        signupMessage.className = 'message error';
+        signupMessage.style.display = 'block';
+        return;
+      }
+
+      if (!isValidEmail(email)) {
+        signupMessage.textContent = '❌ Ogiltig e-postformat';
+        signupMessage.className = 'message error';
+        signupMessage.style.display = 'block';
+        return;
+      }
+
+      signupMessage.textContent = 'Registrerar...';
+      signupMessage.className = 'message loading';
+      signupMessage.style.display = 'block';
+
+      try {
+        const response = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            username,
+            email,
+            password,
+            gender: parseInt(gender),
+            birthDate
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          signupMessage.textContent = '✅ ' + data.message;
+          signupMessage.className = 'message success';
+          setTimeout(() => {
+            signupForm.reset();
+            switchTab('login');
+          }, 2000);
+        } else {
+          signupMessage.textContent = '❌ ' + data.message;
+          signupMessage.className = 'message error';
+        }
+      } catch (error) {
+        signupMessage.textContent = '❌ Ett fel uppstod';
+        signupMessage.className = 'message error';
       }
     });
   </script>
