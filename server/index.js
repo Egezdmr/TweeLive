@@ -82,18 +82,54 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// Test endpoint: Get all users
-app.get('/api/users', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT id, username, email, created_at FROM users');
-    res.json({
-      success: true,
-      count: result.rows.length,
-      users: result.rows
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  const { identifier, password } = req.body;
+
+  if (!identifier || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Användarnamn/e-post och lösenord krävs'
     });
+  }
+
+  try {
+    // Find user by username OR email
+    const result = await pool.query(
+      'SELECT id, username, email, password FROM users WHERE username = $1 OR email = $1',
+      [identifier]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Inloggningsuppgifterna är felaktiga'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Compare passwords (no hashing for now)
+    if (user.password === password) {
+      return res.json({
+        success: true,
+        message: 'Inloggning lyckades!',
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
+        }
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Inloggningsuppgifterna är felaktiga'
+      });
+    }
   } catch (error) {
     res.status(500).json({
-      error: error.message
+      success: false,
+      message: error.message
     });
   }
 });
