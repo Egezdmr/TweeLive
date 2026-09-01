@@ -10,6 +10,8 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 .env.production.local
+secrets.env
+config/secrets.env
 
 # IDE & Editor
 .vscode/
