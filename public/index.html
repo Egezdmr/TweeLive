@@ -290,10 +290,6 @@
         } else {
           loginMessage.textContent = '❌ ' + data.message;
           loginMessage.className = 'message error';
-          setTimeout(() => {
-            loginForm.reset();
-            loginMessage.style.display = 'none';
-          }, 3000);
         }
       } catch (error) {
         loginMessage.textContent = '❌ Ett fel uppstod';
@@ -310,11 +306,11 @@
     const passwordConfirmInput = document.getElementById('passwordConfirm');
 
     // Real-time validation
-    usernameInput.addEventListener('blur', checkUsername);
+    usernameInput.addEventListener('input', checkUsernameRealtime);
     emailInput.addEventListener('input', validateEmailRealtime);
     passwordConfirmInput.addEventListener('input', validatePasswordsRealtime);
 
-    async function checkUsername() {
+    async function checkUsernameRealtime() {
       const username = usernameInput.value.trim();
       const msg = document.getElementById('usernameMsg');
 

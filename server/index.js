@@ -3,8 +3,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import pkg from 'pg';
+import { hashPassword, comparePassword } from '../security/passwordUtils.js';
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: './security/.env.local' });
 dotenv.config();
 
 const { Pool } = pkg;
@@ -109,8 +110,10 @@ app.post('/api/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Compare passwords (no hashing for now)
-    if (user.password === password) {
+    // Compare passwords using bcrypt
+    const passwordMatch = await comparePassword(password, user.password);
+
+    if (passwordMatch) {
       return res.json({
         success: true,
         message: 'Inloggning lyckades!',
@@ -165,10 +168,11 @@ app.post('/api/register', async (req, res) => {
       });
     }
 
-    // Insert new user
+    // Insert new user with hashed password
+    const hashedPassword = await hashPassword(password);
     const result = await pool.query(
       'INSERT INTO users (first_name, last_name, username, email, password, gender, birth_date) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username, email',
-      [firstName, lastName, username, email, password, gender, birthDate]
+      [firstName, lastName, username, email, hashedPassword, gender, birthDate]
     );
 
     res.json({
