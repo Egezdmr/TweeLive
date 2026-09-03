@@ -14,7 +14,7 @@
       margin: 0;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
-    .container {
+    .auth-container {
       background: white;
       padding: 40px;
       border-radius: 8px;
@@ -22,6 +22,43 @@
       width: 100%;
       max-width: 400px;
       max-height: 90vh;
+      overflow-y: auto;
+    }
+    .chat-container {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      background: #f5f5f5;
+      flex-direction: column;
+    }
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      position: relative;
+    }
+    .logout-btn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .logout-btn:hover {
+      background: #f0f0f0;
+    }
+    .chat-content {
+      flex: 1;
+      padding: 20px;
       overflow-y: auto;
     }
     h1 {
@@ -100,13 +137,7 @@
       display: block;
       margin-top: 3px;
     }
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 25px;
-    }
     button {
-      flex: 1;
       padding: 12px;
       border: none;
       border-radius: 4px;
@@ -115,18 +146,13 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-    .btn-signin {
+    .btn-signin, .btn-signup {
+      width: 100%;
       background-color: #667eea;
       color: white;
+      margin-top: 20px;
     }
-    .btn-signin:hover {
-      background-color: #5568d3;
-    }
-    .btn-signup {
-      background-color: #667eea;
-      color: white;
-    }
-    .btn-signup:hover {
+    .btn-signin:hover, .btn-signup:hover {
       background-color: #5568d3;
     }
     .message {
@@ -155,7 +181,8 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- Auth Container -->
+  <div id="authContainer" class="auth-container">
     <h1>🎉 TweeLive</h1>
 
     <div class="tabs">
@@ -168,27 +195,15 @@
       <form id="loginForm">
         <div class="form-group">
           <label for="identifier">Användarnamn eller E-post:</label>
-          <input
-            type="text"
-            id="identifier"
-            name="identifier"
-            placeholder="Ange användarnamn eller e-post"
-            required
-          >
+          <input type="text" id="identifier" name="identifier" placeholder="Ange användarnamn eller e-post" required>
         </div>
 
         <div class="form-group">
           <label for="password">Lösenord:</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Ange lösenord"
-            required
-          >
+          <input type="password" id="password" name="password" placeholder="Ange lösenord" required>
         </div>
 
-        <button type="submit" class="btn-signin" style="width: 100%; margin-top: 20px;">Logga in</button>
+        <button type="submit" class="btn-signin">Logga in</button>
       </form>
 
       <div id="loginMessage" class="message"></div>
@@ -244,15 +259,62 @@
           <input type="date" id="birthDate" name="birthDate" required>
         </div>
 
-        <button type="submit" class="btn-signup" style="width: 100%; margin-top: 20px;">Registrera</button>
+        <button type="submit" class="btn-signup">Registrera</button>
       </form>
 
       <div id="signupMessage" class="message"></div>
     </div>
   </div>
 
+  <!-- Chat Container -->
+  <div id="chatContainer" class="chat-container">
+    <div class="chat-header">
+      Inloggad som: <span id="usernameDisplay"></span>
+      <button class="logout-btn" onclick="logout()">Logga ut</button>
+    </div>
+    <div class="chat-content">
+      <p>Chattskärm under utveckling...</p>
+    </div>
+  </div>
+
   <script>
-    // Tab switching
+    // ===== SESSION MANAGEMENT =====
+    function saveUserToStorage(user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+
+    function getUserFromStorage() {
+      const user = localStorage.getItem('user');
+      return user ? JSON.parse(user) : null;
+    }
+
+    function logout() {
+      localStorage.removeItem('user');
+      showAuthContainer();
+    }
+
+    function showAuthContainer() {
+      document.getElementById('authContainer').style.display = 'block';
+      document.getElementById('chatContainer').style.display = 'none';
+    }
+
+    function showChatContainer(username) {
+      document.getElementById('authContainer').style.display = 'none';
+      document.getElementById('chatContainer').style.display = 'flex';
+      document.getElementById('usernameDisplay').textContent = username;
+    }
+
+    // Check if user is already logged in on page load
+    window.addEventListener('load', () => {
+      const user = getUserFromStorage();
+      if (user) {
+        showChatContainer(user.username);
+      } else {
+        showAuthContainer();
+      }
+    });
+
+    // ===== TAB SWITCHING =====
     function switchTab(tab) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -260,13 +322,12 @@
       event.target.classList.add('active');
     }
 
-    // Login form
+    // ===== LOGIN FORM =====
     const loginForm = document.getElementById('loginForm');
     const loginMessage = document.getElementById('loginMessage');
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-
       const identifier = document.getElementById('identifier').value;
       const password = document.getElementById('password').value;
 
@@ -286,7 +347,11 @@
         if (data.success) {
           loginMessage.textContent = '✅ ' + data.message;
           loginMessage.className = 'message success';
-          setTimeout(() => window.location.href = '/dashboard', 2000);
+          saveUserToStorage(data.user);
+          setTimeout(() => {
+            showChatContainer(data.user.username);
+            loginForm.reset();
+          }, 1500);
         } else {
           loginMessage.textContent = '❌ ' + data.message;
           loginMessage.className = 'message error';
@@ -297,7 +362,7 @@
       }
     });
 
-    // Signup form
+    // ===== SIGNUP FORM =====
     const signupForm = document.getElementById('signupForm');
     const signupMessage = document.getElementById('signupMessage');
     const usernameInput = document.getElementById('regUsername');
@@ -305,7 +370,6 @@
     const passwordInput = document.getElementById('regPassword');
     const passwordConfirmInput = document.getElementById('passwordConfirm');
 
-    // Real-time validation
     usernameInput.addEventListener('input', checkUsernameRealtime);
     emailInput.addEventListener('input', validateEmailRealtime);
     passwordConfirmInput.addEventListener('input', validatePasswordsRealtime);
@@ -313,16 +377,11 @@
     async function checkUsernameRealtime() {
       const username = usernameInput.value.trim();
       const msg = document.getElementById('usernameMsg');
-
-      if (!username) {
-        msg.style.display = 'none';
-        return;
-      }
+      if (!username) { msg.style.display = 'none'; return; }
 
       try {
         const response = await fetch(`/api/check-username/${username}`);
         const data = await response.json();
-
         if (data.exists) {
           msg.textContent = '❌ Användarnamnet är redan taget';
           msg.className = 'validation-msg error';
@@ -339,24 +398,17 @@
     async function validateEmailRealtime() {
       const email = emailInput.value.trim();
       const msg = document.getElementById('emailMsg');
+      if (!email) { msg.style.display = 'none'; return; }
 
-      if (!email) {
-        msg.style.display = 'none';
-        return;
-      }
-
-      // Validate format first
       if (!isValidEmail(email)) {
         msg.textContent = '❌ Ogiltig e-postformat';
         msg.className = 'validation-msg error';
         return;
       }
 
-      // Check if email exists in database
       try {
         const response = await fetch(`/api/check-email/${encodeURIComponent(email)}`);
         const data = await response.json();
-
         if (data.exists) {
           msg.innerHTML = '❌ E-postadressen är redan registrerad<br><small>Försök <a href="#" onclick="switchTab(\'login\'); return false;">logga in</a> istället</small>';
           msg.className = 'validation-msg error';
@@ -375,10 +427,7 @@
       const confirm = passwordConfirmInput.value;
       const msg = document.getElementById('passwordMsg');
 
-      if (!confirm) {
-        msg.style.display = 'none';
-        return;
-      }
+      if (!confirm) { msg.style.display = 'none'; return; }
 
       if (password === confirm && password.length > 0) {
         msg.textContent = '✅ Lösenorden matchar';
@@ -395,7 +444,6 @@
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    // Submit signup form
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -408,7 +456,6 @@
       const gender = document.getElementById('gender').value;
       const birthDate = document.getElementById('birthDate').value;
 
-      // Validate
       if (password !== passwordConfirm) {
         signupMessage.textContent = '❌ Lösenorden matchar inte';
         signupMessage.className = 'message error';
@@ -432,13 +479,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            firstName,
-            lastName,
-            username,
-            email,
-            password,
-            gender: parseInt(gender),
-            birthDate
+            firstName, lastName, username, email, password,
+            gender: parseInt(gender), birthDate
           })
         });
 
