@@ -3,19 +3,36 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import pkg from 'pg';
+import session from 'express-session';
 import { hashPassword, comparePassword } from '../security/passwordUtils.js';
 
-dotenv.config({ path: './security/.env.local' });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.join(__dirname, '../security/.env.local');
+
+dotenv.config({ path: envPath });
 dotenv.config();
 
 const { Pool } = pkg;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection pool
+// Session configuration
+app.use(session({
+  secret: 'tweelive-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
+
+// Middleware
+app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.json());
 let dbStatus = 'disconnected';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -114,14 +131,16 @@ app.post('/api/login', async (req, res) => {
     const passwordMatch = await comparePassword(password, user.password);
 
     if (passwordMatch) {
+      // Save user to session
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      };
+
       return res.json({
         success: true,
-        message: 'Inloggning lyckades!',
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email
-        }
+        message: 'Inloggning lyckades!'
       });
     } else {
       return res.status(401).json({
@@ -234,6 +253,39 @@ app.get('/api/check-email/:email', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Get current session user
+app.get('/api/auth/me', (req, res) => {
+  if (req.session.user) {
+    return res.json({
+      success: true,
+      user: req.session.user
+    });
+  } else {
+    return res.status(401).json({
+      success: false,
+      message: 'Inte inloggad'
+    });
+  }
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: 'Kunde inte logga ut'
+      });
+    }
+
+    res.clearCookie('connect.sid');
+    return res.json({
+      success: true,
+      message: 'Utloggning lyckades'
+    });
+  });
 });
 
 app.listen(PORT, () => {

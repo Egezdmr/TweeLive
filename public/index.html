@@ -249,8 +249,8 @@
           <label for="gender">Kön:</label>
           <select id="gender" name="gender" required>
             <option value="">-- Välj --</option>
-            <option value="0">Erkek (Man)</option>
-            <option value="1">Kadin (Kvinna)</option>
+            <option value="0">Man</option>
+            <option value="1">Kvinna</option>
           </select>
         </div>
 
@@ -270,7 +270,7 @@
   <div id="chatContainer" class="chat-container">
     <div class="chat-header">
       Inloggad som: <span id="usernameDisplay"></span>
-      <button class="logout-btn" onclick="logout()">Logga ut</button>
+      <button class="logout-btn" onclick="performLogout()">Logga ut</button>
     </div>
     <div class="chat-content">
       <p>Chattskärm under utveckling...</p>
@@ -279,20 +279,6 @@
 
   <script>
     // ===== SESSION MANAGEMENT =====
-    function saveUserToStorage(user) {
-      localStorage.setItem('user', JSON.stringify(user));
-    }
-
-    function getUserFromStorage() {
-      const user = localStorage.getItem('user');
-      return user ? JSON.parse(user) : null;
-    }
-
-    function logout() {
-      localStorage.removeItem('user');
-      showAuthContainer();
-    }
-
     function showAuthContainer() {
       document.getElementById('authContainer').style.display = 'block';
       document.getElementById('chatContainer').style.display = 'none';
@@ -305,14 +291,44 @@
     }
 
     // Check if user is already logged in on page load
-    window.addEventListener('load', () => {
-      const user = getUserFromStorage();
-      if (user) {
-        showChatContainer(user.username);
-      } else {
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            showChatContainer(data.user.username);
+          } else {
+            showAuthContainer();
+          }
+        } else {
+          showAuthContainer();
+        }
+      } catch (error) {
+        console.error('Kunde inte kontrollera session:', error);
         showAuthContainer();
       }
     });
+
+    // Logout function
+    async function performLogout() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          showAuthContainer();
+          document.getElementById('loginForm').reset();
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
 
     // ===== TAB SWITCHING =====
     function switchTab(tab) {
@@ -339,6 +355,7 @@
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ identifier, password })
         });
 
@@ -347,9 +364,8 @@
         if (data.success) {
           loginMessage.textContent = '✅ ' + data.message;
           loginMessage.className = 'message success';
-          saveUserToStorage(data.user);
           setTimeout(() => {
-            showChatContainer(data.user.username);
+            showChatContainer(identifier.split('@')[0]);
             loginForm.reset();
           }, 1500);
         } else {
