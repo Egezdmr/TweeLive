@@ -60,9 +60,6 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, '../public')));
-app.use(express.json());
-
 // ===== MIDDLEWARE: CHECK AUTHENTICATION =====
 function requireAuth(req, res, next) {
   if (!req.session.user) {
@@ -490,11 +487,11 @@ app.put('/api/contacts/:id/block', requireAuth, async (req, res) => {
     const { id } = req.params;
     const userId = req.session.user.id;
 
-    // Update only if this user owns the relationship
+    // Update if user is either party in the relationship
     const result = await pool.query(
       `UPDATE contacts
        SET status = 'blocked', updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND user_id = $2
+       WHERE id = $1 AND (user_id = $2 OR contact_id = $2)
        RETURNING id, status`,
       [id, userId]
     );
