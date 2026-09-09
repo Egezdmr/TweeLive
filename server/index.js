@@ -144,7 +144,11 @@ app.post('/api/login', async (req, res) => {
 
       return res.json({
         success: true,
-        message: 'Inloggning lyckades!'
+        message: 'Inloggning lyckades!',
+        user: {
+          id: user.id,
+          username: user.username
+        }
       });
     } else {
       return res.status(401).json({

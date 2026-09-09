@@ -432,6 +432,7 @@
         if (data.success) {
           alert('Förfrågan skickad!');
           document.getElementById('userSearchInput').value = '';
+          document.getElementById('searchResultsList').innerHTML = '';
           document.getElementById('searchResults').style.display = 'none';
         } else {
           alert('Fel: ' + data.message);
@@ -567,7 +568,7 @@
           loginMessage.textContent = '✅ ' + data.message;
           loginMessage.className = 'message success';
           setTimeout(() => {
-            showChatContainer(identifier.split('@')[0]);
+            showChatContainer(data.user?.username || identifier);
             loginForm.reset();
           }, 1500);
         } else {
