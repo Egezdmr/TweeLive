@@ -56,11 +56,6 @@
     .logout-btn:hover {
       background: #f0f0f0;
     }
-    .chat-content {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-    }
     h1 {
       text-align: center;
       color: #333;
@@ -272,8 +267,48 @@
       Inloggad som: <span id="usernameDisplay"></span>
       <button class="logout-btn" onclick="performLogout()">Logga ut</button>
     </div>
-    <div class="chat-content">
-      <p>Chattskärm under utveckling...</p>
+
+    <div style="display: flex; height: calc(100% - 60px);">
+      <!-- Left Sidebar -->
+      <div style="width: 300px; background: #e8e8e8; border-right: 1px solid #999; overflow-y: auto; flex-direction: column; display: flex;">
+
+        <!-- Search Section -->
+        <div style="padding: 15px; border-bottom: 1px solid #999;">
+          <h3 style="margin: 0 0 10px 0; font-size: 13px;">Sök användare</h3>
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <input
+              type="text"
+              id="userSearchInput"
+              placeholder="Sök användarnamn..."
+              style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid #999; border-radius: 3px;"
+              onkeypress="handleSearchKeypress(event)"
+            >
+            <button
+              id="userSearchBtn"
+              onclick="performSearch()"
+              style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: bold;"
+            >Sök</button>
+          </div>
+
+          <!-- Search Results -->
+          <div id="searchResults" style="display: none; max-height: 300px; overflow-y: auto;">
+            <div id="searchResultsList"></div>
+          </div>
+        </div>
+
+        <!-- Pending Requests Section -->
+        <div style="padding: 15px; flex: 1; overflow-y: auto;">
+          <h3 style="margin: 0 0 10px 0; font-size: 13px;">Väntande förfrågningar</h3>
+          <div id="pendingRequestsList" style="font-size: 12px;">
+            <p style="color: #666;">Inga väntande förfrågningar</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Chat Area -->
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f5f5f5;">
+        <p style="color: #999; font-size: 14px;">Chattskärm under utveckling...</p>
+      </div>
     </div>
   </div>
 
@@ -282,12 +317,6 @@
     function showAuthContainer() {
       document.getElementById('authContainer').style.display = 'block';
       document.getElementById('chatContainer').style.display = 'none';
-    }
-
-    function showChatContainer(username) {
-      document.getElementById('authContainer').style.display = 'none';
-      document.getElementById('chatContainer').style.display = 'flex';
-      document.getElementById('usernameDisplay').textContent = username;
     }
 
     // Check if user is already logged in on page load
@@ -328,6 +357,179 @@
       } catch (error) {
         console.error('Logout error:', error);
       }
+    }
+
+    // ===== CONTACTS MANAGEMENT =====
+
+    // Search users
+    async function performSearch() {
+      const query = document.getElementById('userSearchInput').value.trim();
+
+      if (!query) {
+        document.getElementById('searchResults').style.display = 'none';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.users.length > 0) {
+          displaySearchResults(data.users);
+          document.getElementById('searchResults').style.display = 'block';
+        } else {
+          document.getElementById('searchResultsList').innerHTML = '<p style="color: #666;">Ingen användare hittad</p>';
+          document.getElementById('searchResults').style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        document.getElementById('searchResultsList').innerHTML = '<p style="color: red;">Sökfel</p>';
+      }
+    }
+
+    function handleSearchKeypress(event) {
+      if (event.key === 'Enter') {
+        performSearch();
+      }
+    }
+
+    function displaySearchResults(users) {
+      const resultsList = document.getElementById('searchResultsList');
+      resultsList.innerHTML = '';
+
+      users.forEach(user => {
+        const resultItem = document.createElement('div');
+        resultItem.style.cssText = 'padding: 8px; background: white; margin-bottom: 5px; border-radius: 3px; border: 1px solid #ddd;';
+        resultItem.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>${user.username}</strong><br>
+              <small style="color: #666;">${user.email}</small>
+            </div>
+            <button onclick="sendFriendRequest(${user.id})" style="padding: 5px 10px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold;">
+              Lägg till
+            </button>
+          </div>
+        `;
+        resultsList.appendChild(resultItem);
+      });
+    }
+
+    async function sendFriendRequest(contactId) {
+      try {
+        const response = await fetch('/api/contacts/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ contactId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('Förfrågan skickad!');
+          document.getElementById('userSearchInput').value = '';
+          document.getElementById('searchResults').style.display = 'none';
+        } else {
+          alert('Fel: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Send request error:', error);
+        alert('Kunde inte skicka förfrågan');
+      }
+    }
+
+    // Load and display pending requests
+    async function loadPendingRequests() {
+      try {
+        const response = await fetch('/api/contacts', {
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.pendingRequests.length > 0) {
+          displayPendingRequests(data.pendingRequests);
+        } else {
+          document.getElementById('pendingRequestsList').innerHTML = '<p style="color: #666;">Inga väntande förfrågningar</p>';
+        }
+      } catch (error) {
+        console.error('Load pending requests error:', error);
+      }
+    }
+
+    function displayPendingRequests(requests) {
+      const list = document.getElementById('pendingRequestsList');
+      list.innerHTML = '';
+
+      requests.forEach(request => {
+        const requestItem = document.createElement('div');
+        requestItem.style.cssText = 'padding: 10px; background: white; margin-bottom: 8px; border-radius: 3px; border: 1px solid #ddd;';
+        requestItem.innerHTML = `
+          <div>
+            <strong style="font-size: 12px;">${request.username}</strong>
+            <div style="font-size: 11px; color: #666; margin: 5px 0;">${request.email}</div>
+            <div style="display: flex; gap: 5px; margin-top: 8px;">
+              <button onclick="acceptRequest(${request.id})" style="flex: 1; padding: 5px; background: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold;">
+                Acceptera
+              </button>
+              <button onclick="rejectRequest(${request.id})" style="flex: 1; padding: 5px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold;">
+                Avvisa
+              </button>
+            </div>
+          </div>
+        `;
+        list.appendChild(requestItem);
+      });
+    }
+
+    async function acceptRequest(contactId) {
+      try {
+        const response = await fetch(`/api/contacts/${contactId}/accept`, {
+          method: 'PUT',
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          loadPendingRequests();
+        } else {
+          alert('Fel: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Accept error:', error);
+      }
+    }
+
+    async function rejectRequest(contactId) {
+      try {
+        const response = await fetch(`/api/contacts/${contactId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          loadPendingRequests();
+        } else {
+          alert('Fel: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Reject error:', error);
+      }
+    }
+
+    // Load pending requests when showing chat
+    function showChatContainer(username) {
+      document.getElementById('authContainer').style.display = 'none';
+      document.getElementById('chatContainer').style.display = 'flex';
+      document.getElementById('usernameDisplay').textContent = username;
+      loadPendingRequests(); // Load pending requests
     }
 
     // ===== TAB SWITCHING =====
