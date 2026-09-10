@@ -296,6 +296,14 @@
           </div>
         </div>
 
+        <!-- Kontakter -->
+        <div style="padding: 15px; border-bottom: 1px solid #999;">
+          <h3 style="margin: 0 0 10px 0; font-size: 13px;">Kontakter</h3>
+          <div id="friendsList" style="font-size: 12px;">
+            <p style="color: #666;">Inga kontakter än</p>
+          </div>
+        </div>
+
         <!-- Pending Requests Section -->
         <div style="padding: 15px; flex: 1; overflow-y: auto;">
           <h3 style="margin: 0 0 10px 0; font-size: 13px;">Väntande förfrågningar</h3>
@@ -306,8 +314,29 @@
       </div>
 
       <!-- Main Chat Area -->
-      <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f5f5f5;">
-        <p style="color: #999; font-size: 14px;">Chattskärm under utveckling...</p>
+      <div style="flex: 1; display: flex; flex-direction: column; background: #f5f5f5;">
+        <div id="noChatSelected" style="flex: 1; display: flex; align-items: center; justify-content: center;">
+          <p style="color: #999; font-size: 14px;">Välj en kontakt för att chatta</p>
+        </div>
+
+        <div id="chatArea" style="display: none; flex-direction: column; height: 100%;">
+          <div id="activeChatHeader" style="background: #ddd; padding: 10px 15px; border-bottom: 1px solid #999; font-size: 13px;"></div>
+
+          <div id="chatMessagesContainer" style="flex: 1; padding: 15px; overflow-y: auto;"></div>
+
+          <form id="chatMessageForm" style="display: flex; gap: 8px; padding: 10px; border-top: 1px solid #999;">
+            <input
+              type="text"
+              id="chatMessageInput"
+              placeholder="Skriv ett meddelande..."
+              style="flex: 1; padding: 8px; border: 1px solid #999; border-radius: 3px; font-size: 13px;"
+            >
+            <button
+              type="submit"
+              style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;"
+            >Skicka</button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -360,6 +389,9 @@
     }
 
     // ===== CONTACTS MANAGEMENT =====
+
+    // Aktiv chatt just nu (null = ingen vald)
+    let activeChatUser = null;
 
     // Search users
     async function performSearch() {
@@ -443,8 +475,8 @@
       }
     }
 
-    // Load and display pending requests
-    async function loadPendingRequests() {
+    // Hämtar både kontakter och väntande förfrågningar
+    async function loadContacts() {
       try {
         const response = await fetch('/api/contacts', {
           credentials: 'include'
@@ -452,15 +484,120 @@
 
         const data = await response.json();
 
-        if (data.success && data.pendingRequests.length > 0) {
-          displayPendingRequests(data.pendingRequests);
-        } else {
-          document.getElementById('pendingRequestsList').innerHTML = '<p style="color: #666;">Inga väntande förfrågningar</p>';
+        if (data.success) {
+          displayFriends(data.friends || []);
+
+          if (data.pendingRequests && data.pendingRequests.length > 0) {
+            displayPendingRequests(data.pendingRequests);
+          } else {
+            document.getElementById('pendingRequestsList').innerHTML = '<p style="color: #666;">Inga väntande förfrågningar</p>';
+          }
         }
       } catch (error) {
-        console.error('Load pending requests error:', error);
+        console.error('Load contacts error:', error);
       }
     }
+
+    function displayFriends(friends) {
+      const list = document.getElementById('friendsList');
+
+      if (!friends.length) {
+        list.innerHTML = '<p style="color: #666;">Inga kontakter än</p>';
+        return;
+      }
+
+      list.innerHTML = '';
+
+      friends.forEach(friend => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding: 8px; background: white; margin-bottom: 5px; border-radius: 3px; border: 1px solid #ddd; cursor: pointer;';
+        item.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>${friend.username}</strong><br>
+              <small style="color: #666;">${friend.email}</small>
+            </div>
+            <button style="padding: 4px 8px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: bold;">
+              Ta bort
+            </button>
+          </div>
+        `;
+
+        item.addEventListener('click', () => openChatWith(friend));
+        item.querySelector('button').addEventListener('click', (event) => {
+          event.stopPropagation();
+          removeContact(friend);
+        });
+
+        list.appendChild(item);
+      });
+    }
+
+    async function removeContact(friend) {
+      const confirmed = confirm('Är du säker på att du vill ta bort kontakten?');
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch(`/api/contacts/${friend.id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          if (activeChatUser && activeChatUser.contactRecordId === friend.id) {
+            resetChatArea();
+          }
+          loadContacts();
+        } else {
+          alert('Fel: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Remove contact error:', error);
+        alert('Kunde inte ta bort kontakten');
+      }
+    }
+
+    // Öppnar chattfönstret mot en vald kontakt
+    function openChatWith(friend) {
+      activeChatUser = {
+        id: friend.user_id,
+        username: friend.username,
+        contactRecordId: friend.id
+      };
+
+      document.getElementById('noChatSelected').style.display = 'none';
+      document.getElementById('chatArea').style.display = 'flex';
+      document.getElementById('activeChatHeader').innerHTML = `Chattar med: <strong>${activeChatUser.username}</strong>`;
+      document.getElementById('chatMessagesContainer').innerHTML = '';
+    }
+
+    // Nollställer chattvyn, t.ex. efter borttagen kontakt
+    function resetChatArea() {
+      activeChatUser = null;
+      document.getElementById('chatArea').style.display = 'none';
+      document.getElementById('noChatSelected').style.display = 'flex';
+      document.getElementById('chatMessagesContainer').innerHTML = '';
+    }
+
+    // Tillfällig hantering av meddelanden tills Socket.io kopplas in
+    document.getElementById('chatMessageForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const input = document.getElementById('chatMessageInput');
+      const text = input.value.trim();
+      if (!text || !activeChatUser) return;
+
+      const container = document.getElementById('chatMessagesContainer');
+      const bubble = document.createElement('div');
+      bubble.style.cssText = 'padding: 6px 10px; margin-bottom: 6px; background: #667eea; color: white; border-radius: 4px; display: inline-block; max-width: 70%;';
+      bubble.textContent = text;
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+
+      input.value = '';
+    });
 
     function displayPendingRequests(requests) {
       const list = document.getElementById('pendingRequestsList');
@@ -497,7 +634,7 @@
         const data = await response.json();
 
         if (data.success) {
-          loadPendingRequests();
+          loadContacts();
         } else {
           alert('Fel: ' + data.message);
         }
@@ -516,7 +653,7 @@
         const data = await response.json();
 
         if (data.success) {
-          loadPendingRequests();
+          loadContacts();
         } else {
           alert('Fel: ' + data.message);
         }
@@ -525,12 +662,12 @@
       }
     }
 
-    // Load pending requests when showing chat
+    // Visar chattvyn och laddar kontaktlistan
     function showChatContainer(username) {
       document.getElementById('authContainer').style.display = 'none';
       document.getElementById('chatContainer').style.display = 'flex';
       document.getElementById('usernameDisplay').textContent = username;
-      loadPendingRequests(); // Load pending requests
+      loadContacts();
     }
 
     // ===== TAB SWITCHING =====
