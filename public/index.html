@@ -392,6 +392,7 @@
 
     // Aktiv chatt just nu (null = ingen vald)
     let activeChatUser = null;
+    let currentUsername = null;
 
     // Search users
     async function performSearch() {
@@ -559,8 +560,8 @@
       }
     }
 
-    // Öppnar chattfönstret mot en vald kontakt
-    function openChatWith(friend) {
+    // Öppnar chattfönstret mot en vald kontakt och hämtar konversationen
+    async function openChatWith(friend) {
       activeChatUser = {
         id: friend.user_id,
         username: friend.username,
@@ -570,7 +571,65 @@
       document.getElementById('noChatSelected').style.display = 'none';
       document.getElementById('chatArea').style.display = 'flex';
       document.getElementById('activeChatHeader').innerHTML = `Chattar med: <strong>${activeChatUser.username}</strong>`;
-      document.getElementById('chatMessagesContainer').innerHTML = '';
+      document.getElementById('chatMessagesContainer').innerHTML = '<p style="color: #666;">Laddar meddelanden...</p>';
+
+      try {
+        const response = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ recipientId: friend.user_id })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          activeChatUser.conversationId = data.conversationId;
+          loadConversationMessages(data.conversationId);
+        } else {
+          document.getElementById('chatMessagesContainer').innerHTML = '<p style="color: red;">Kunde inte öppna konversationen</p>';
+        }
+      } catch (error) {
+        console.error('Open conversation error:', error);
+        document.getElementById('chatMessagesContainer').innerHTML = '<p style="color: red;">Kunde inte öppna konversationen</p>';
+      }
+    }
+
+    // Hämtar och visar meddelandehistorik för en konversation
+    async function loadConversationMessages(conversationId) {
+      try {
+        const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        const container = document.getElementById('chatMessagesContainer');
+        container.innerHTML = '';
+
+        if (!data.success || !data.messages.length) {
+          container.innerHTML = '<p style="color: #999; text-align: center;">Inga meddelanden än. Skriv något!</p>';
+          return;
+        }
+
+        data.messages.forEach(message => {
+          const isOwnMessage = message.sender_username === currentUsername;
+
+          const bubbleWrapper = document.createElement('div');
+          bubbleWrapper.style.cssText = `display: flex; margin-bottom: 6px; ${isOwnMessage ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}`;
+
+          const bubble = document.createElement('div');
+          bubble.style.cssText = `padding: 6px 10px; border-radius: 4px; max-width: 70%; ${isOwnMessage ? 'background: #667eea; color: white;' : 'background: #e0e0e0; color: black;'}`;
+          bubble.innerHTML = `<strong>${message.sender_username}</strong><br>${message.content}`;
+
+          bubbleWrapper.appendChild(bubble);
+          container.appendChild(bubbleWrapper);
+        });
+
+        container.scrollTop = container.scrollHeight;
+      } catch (error) {
+        console.error('Load messages error:', error);
+        document.getElementById('chatMessagesContainer').innerHTML = '<p style="color: red;">Kunde inte ladda meddelanden</p>';
+      }
     }
 
     // Nollställer chattvyn, t.ex. efter borttagen kontakt
@@ -664,6 +723,7 @@
 
     // Visar chattvyn och laddar kontaktlistan
     function showChatContainer(username) {
+      currentUsername = username;
       document.getElementById('authContainer').style.display = 'none';
       document.getElementById('chatContainer').style.display = 'flex';
       document.getElementById('usernameDisplay').textContent = username;
