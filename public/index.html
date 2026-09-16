@@ -173,6 +173,16 @@
       color: #856404;
       border: 1px solid #ffeaa7;
     }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+    .nudge-shake {
+      animation: shake 0.5s;
+    }
   </style>
 </head>
 <body>
@@ -335,12 +345,18 @@
               type="submit"
               style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;"
             >Skicka</button>
+            <button
+              type="button"
+              id="nudgeBtn"
+              style="padding: 8px 16px; background: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;"
+            >Nudge</button>
           </form>
         </div>
       </div>
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     // ===== SESSION MANAGEMENT =====
     function showAuthContainer() {
@@ -358,6 +374,7 @@
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.user) {
+            currentUserId = data.user.id;
             showChatContainer(data.user.username);
           } else {
             showAuthContainer();
@@ -390,9 +407,21 @@
 
     // ===== CONTACTS MANAGEMENT =====
 
+    // Socket.io-anslutning för realtidsmeddelanden
+    const socket = io();
+
     // Aktiv chatt just nu (null = ingen vald)
     let activeChatUser = null;
     let currentUsername = null;
+    let currentUserId = null;
+
+    socket.on('new_message', (message) => {
+      if (activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(message.conversation_id)) {
+        appendMessageBubble(message);
+        const container = document.getElementById('chatMessagesContainer');
+        container.scrollTop = container.scrollHeight;
+      }
+    });
 
     // Search users
     async function performSearch() {
@@ -585,6 +614,7 @@
 
         if (data.success) {
           activeChatUser.conversationId = data.conversationId;
+          socket.emit('join_conversation', data.conversationId);
           loadConversationMessages(data.conversationId);
         } else {
           document.getElementById('chatMessagesContainer').innerHTML = '<p style="color: red;">Kunde inte öppna konversationen</p>';
@@ -611,25 +641,44 @@
           return;
         }
 
-        data.messages.forEach(message => {
-          const isOwnMessage = message.sender_username === currentUsername;
-
-          const bubbleWrapper = document.createElement('div');
-          bubbleWrapper.style.cssText = `display: flex; margin-bottom: 6px; ${isOwnMessage ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}`;
-
-          const bubble = document.createElement('div');
-          bubble.style.cssText = `padding: 6px 10px; border-radius: 4px; max-width: 70%; ${isOwnMessage ? 'background: #667eea; color: white;' : 'background: #e0e0e0; color: black;'}`;
-          bubble.innerHTML = `<strong>${message.sender_username}</strong><br>${message.content}`;
-
-          bubbleWrapper.appendChild(bubble);
-          container.appendChild(bubbleWrapper);
-        });
+        data.messages.forEach(message => appendMessageBubble(message));
 
         container.scrollTop = container.scrollHeight;
       } catch (error) {
         console.error('Load messages error:', error);
         document.getElementById('chatMessagesContainer').innerHTML = '<p style="color: red;">Kunde inte ladda meddelanden</p>';
       }
+    }
+
+    // Lägger till en enskild meddelandebubbla i chattfönstret
+    function appendMessageBubble(message) {
+      const container = document.getElementById('chatMessagesContainer');
+
+      if (message.message_type === 'nudge') {
+        const chatArea = document.getElementById('chatArea');
+        chatArea.classList.remove('nudge-shake');
+        void chatArea.offsetWidth;
+        chatArea.classList.add('nudge-shake');
+        setTimeout(() => chatArea.classList.remove('nudge-shake'), 500);
+
+        const nudgeWrapper = document.createElement('div');
+        nudgeWrapper.style.cssText = 'text-align: center; margin-bottom: 6px;';
+        nudgeWrapper.innerHTML = `<em style="color: #666;">${message.sender_username}: ${message.content}</em>`;
+        container.appendChild(nudgeWrapper);
+        return;
+      }
+
+      const isOwnMessage = parseInt(message.sender_id) === parseInt(currentUserId);
+
+      const bubbleWrapper = document.createElement('div');
+      bubbleWrapper.style.cssText = `display: flex; margin-bottom: 6px; ${isOwnMessage ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}`;
+
+      const bubble = document.createElement('div');
+      bubble.style.cssText = `padding: 6px 10px; border-radius: 4px; max-width: 70%; ${isOwnMessage ? 'background: #667eea; color: white;' : 'background: #e0e0e0; color: black;'}`;
+      bubble.innerHTML = `<strong>${message.sender_username}</strong><br>${message.content}`;
+
+      bubbleWrapper.appendChild(bubble);
+      container.appendChild(bubbleWrapper);
     }
 
     // Nollställer chattvyn, t.ex. efter borttagen kontakt
@@ -640,22 +689,56 @@
       document.getElementById('chatMessagesContainer').innerHTML = '';
     }
 
-    // Tillfällig hantering av meddelanden tills Socket.io kopplas in
-    document.getElementById('chatMessageForm').addEventListener('submit', (event) => {
+    // Skickar meddelandet till backend, mottas via socket för visning
+    document.getElementById('chatMessageForm').addEventListener('submit', async (event) => {
       event.preventDefault();
 
       const input = document.getElementById('chatMessageInput');
       const text = input.value.trim();
-      if (!text || !activeChatUser) return;
+      if (!text || !activeChatUser || !activeChatUser.conversationId) return;
 
-      const container = document.getElementById('chatMessagesContainer');
-      const bubble = document.createElement('div');
-      bubble.style.cssText = 'padding: 6px 10px; margin-bottom: 6px; background: #667eea; color: white; border-radius: 4px; display: inline-block; max-width: 70%;';
-      bubble.textContent = text;
-      container.appendChild(bubble);
-      container.scrollTop = container.scrollHeight;
+      try {
+        const response = await fetch(`/api/conversations/${activeChatUser.conversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ content: text, messageType: 'text' })
+        });
 
-      input.value = '';
+        const data = await response.json();
+
+        if (data.success) {
+          input.value = '';
+        } else {
+          alert('Fel: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Send message error:', error);
+        alert('Kunde inte skicka meddelandet');
+      }
+    });
+
+    // Skickar en retro-nudge till motparten
+    document.getElementById('nudgeBtn').addEventListener('click', async () => {
+      if (!activeChatUser || !activeChatUser.conversationId) return;
+
+      try {
+        const response = await fetch(`/api/conversations/${activeChatUser.conversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ content: '* Titreşim gönderdi *', messageType: 'nudge' })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          alert('Fel: ' + data.message);
+        }
+      } catch (error) {
+        console.error('Send nudge error:', error);
+        alert('Kunde inte skicka titreşim');
+      }
     });
 
     function displayPendingRequests(requests) {
@@ -765,6 +848,7 @@
           loginMessage.textContent = '✅ ' + data.message;
           loginMessage.className = 'message success';
           setTimeout(() => {
+            currentUserId = data.user?.id || null;
             showChatContainer(data.user?.username || identifier);
             loginForm.reset();
           }, 1500);

@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import pkg from 'pg';
 import session from 'express-session';
+import http from 'http';
+import { Server } from 'socket.io';
 import { hashPassword, comparePassword } from '../security/passwordUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +19,14 @@ const { Pool } = pkg;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = new Server(server);
+
+io.on('connection', (socket) => {
+  socket.on('join_conversation', (conversationId) => {
+    socket.join('conv_' + conversationId);
+  });
+});
 
 // Session configuration
 app.use(session({
@@ -667,6 +677,60 @@ app.get('/api/conversations/:id/messages', requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// 9. Skickar ett nytt meddelande till en konversation
+app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, messageType = 'text' } = req.body;
+    const userId = req.session.user.id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Meddelandet kan inte vara tomt'
+      });
+    }
+
+    const participant = await pool.query(
+      `SELECT 1 FROM conversation_participants
+       WHERE conversation_id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+
+    if (participant.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Du har inte åtkomst till denna konversation'
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, conversation_id, sender_id, content, message_type, created_at`,
+      [id, userId, content.trim(), messageType]
+    );
+
+    const savedMessage = {
+      ...result.rows[0],
+      sender_username: req.session.user.username
+    };
+
+    io.to('conv_' + id).emit('new_message', savedMessage);
+
+    res.status(201).json({
+      success: true,
+      message: savedMessage
+    });
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Kunde inte skicka meddelandet'
+    });
+  }
+});
+
+server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
