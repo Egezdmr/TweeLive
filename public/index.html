@@ -417,7 +417,7 @@
 
     socket.on('new_message', (message) => {
       if (activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(message.conversation_id)) {
-        appendMessageBubble(message);
+        appendMessageBubble(message, true);
         const container = document.getElementById('chatMessagesContainer');
         container.scrollTop = container.scrollHeight;
       }
@@ -641,7 +641,7 @@
           return;
         }
 
-        data.messages.forEach(message => appendMessageBubble(message));
+        data.messages.forEach(message => appendMessageBubble(message, false));
 
         container.scrollTop = container.scrollHeight;
       } catch (error) {
@@ -651,15 +651,17 @@
     }
 
     // Lägger till en enskild meddelandebubbla i chattfönstret
-    function appendMessageBubble(message) {
+    function appendMessageBubble(message, isLive = false) {
       const container = document.getElementById('chatMessagesContainer');
 
       if (message.message_type === 'nudge') {
-        const chatArea = document.getElementById('chatArea');
-        chatArea.classList.remove('nudge-shake');
-        void chatArea.offsetWidth;
-        chatArea.classList.add('nudge-shake');
-        setTimeout(() => chatArea.classList.remove('nudge-shake'), 500);
+        if (isLive) {
+          const chatArea = document.getElementById('chatArea');
+          chatArea.classList.remove('nudge-shake');
+          void chatArea.offsetWidth;
+          chatArea.classList.add('nudge-shake');
+          setTimeout(() => chatArea.classList.remove('nudge-shake'), 500);
+        }
 
         const nudgeWrapper = document.createElement('div');
         nudgeWrapper.style.cssText = 'text-align: center; margin-bottom: 6px;';
@@ -727,7 +729,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ content: '* Titreşim gönderdi *', messageType: 'nudge' })
+          body: JSON.stringify({ content: '* Skickade en nudge *', messageType: 'nudge' })
         });
 
         const data = await response.json();
@@ -737,7 +739,7 @@
         }
       } catch (error) {
         console.error('Send nudge error:', error);
-        alert('Kunde inte skicka titreşim');
+        alert('Kunde inte skicka nudge');
       }
     });
 
