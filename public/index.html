@@ -183,6 +183,19 @@
     .nudge-shake {
       animation: shake 0.5s;
     }
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: 4px;
+    }
+    .status-online {
+      background-color: #4CAF50;
+    }
+    .status-offline {
+      background-color: #9E9E9E;
+    }
   </style>
 </head>
 <body>
@@ -375,6 +388,7 @@
           const data = await response.json();
           if (data.success && data.user) {
             currentUserId = data.user.id;
+            socket.emit('user_connected', data.user.id);
             showChatContainer(data.user.username);
           } else {
             showAuthContainer();
@@ -397,6 +411,10 @@
         });
 
         if (response.ok) {
+          if (socket && socket.connected) {
+            socket.disconnect();
+            socket.connect();
+          }
           showAuthContainer();
           document.getElementById('loginForm').reset();
         }
@@ -414,6 +432,7 @@
     let activeChatUser = null;
     let currentUsername = null;
     let currentUserId = null;
+    let onlineUserIds = [];
 
     socket.on('new_message', (message) => {
       if (activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(message.conversation_id)) {
@@ -421,6 +440,17 @@
         const container = document.getElementById('chatMessagesContainer');
         container.scrollTop = container.scrollHeight;
       }
+    });
+
+    socket.on('user_status_change', ({ userId, status }) => {
+      if (status === 'online') {
+        if (!onlineUserIds.includes(userId)) {
+          onlineUserIds.push(userId);
+        }
+      } else {
+        onlineUserIds = onlineUserIds.filter(id => id !== userId);
+      }
+      updateContactStatusUI(userId, status);
     });
 
     // Search users
@@ -515,6 +545,15 @@
         const data = await response.json();
 
         if (data.success) {
+          const onlineResponse = await fetch('/api/users/online', {
+            credentials: 'include'
+          });
+
+          const onlineData = await onlineResponse.json();
+          if (onlineData.success) {
+            onlineUserIds = onlineData.onlineUserIds;
+          }
+
           displayFriends(data.friends || []);
 
           if (data.pendingRequests && data.pendingRequests.length > 0) {
@@ -539,12 +578,18 @@
       list.innerHTML = '';
 
       friends.forEach(friend => {
+        const isOnline = onlineUserIds.includes(friend.user_id);
+        const statusClass = isOnline ? 'status-online' : 'status-offline';
+        const statusText = isOnline ? 'Online' : 'Offline';
+
         const item = document.createElement('div');
+        item.setAttribute('data-user-id', friend.user_id);
         item.style.cssText = 'padding: 8px; background: white; margin-bottom: 5px; border-radius: 3px; border: 1px solid #ddd; cursor: pointer;';
         item.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <strong>${friend.username}</strong><br>
+              <strong>${friend.username}</strong>
+              <span class="status-indicator ${statusClass}" title="${statusText}"></span><br>
               <small style="color: #666;">${friend.email}</small>
             </div>
             <button style="padding: 4px 8px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: bold;">
@@ -561,6 +606,24 @@
 
         list.appendChild(item);
       });
+    }
+
+    function updateContactStatusUI(userId, status) {
+      const element = document.querySelector(`[data-user-id="${userId}"]`);
+      if (!element) return;
+
+      const indicator = element.querySelector('.status-indicator');
+      if (!indicator) return;
+
+      if (status === 'online') {
+        indicator.classList.remove('status-offline');
+        indicator.classList.add('status-online');
+        indicator.setAttribute('title', 'Online');
+      } else {
+        indicator.classList.remove('status-online');
+        indicator.classList.add('status-offline');
+        indicator.setAttribute('title', 'Offline');
+      }
     }
 
     async function removeContact(friend) {
@@ -851,6 +914,7 @@
           loginMessage.className = 'message success';
           setTimeout(() => {
             currentUserId = data.user?.id || null;
+            socket.emit('user_connected', currentUserId);
             showChatContainer(data.user?.username || identifier);
             loginForm.reset();
           }, 1500);

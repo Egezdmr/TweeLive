@@ -22,9 +22,39 @@ const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server);
 
+// userId -> Set med socketIds (stödjer flera flikar från samma användare)
+const onlineUsers = new Map();
+
 io.on('connection', (socket) => {
+  socket.on('user_connected', (rawUserId) => {
+    const userId = parseInt(rawUserId, 10);
+    if (!userId || isNaN(userId)) return;
+
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+      io.emit('user_status_change', { userId, status: 'online' });
+    }
+    onlineUsers.get(userId).add(socket.id);
+  });
+
   socket.on('join_conversation', (conversationId) => {
     socket.join('conv_' + conversationId);
+  });
+
+  socket.on('disconnect', () => {
+    let disconnectedUserId = null;
+    for (const [userId, socketIds] of onlineUsers.entries()) {
+      if (socketIds.has(socket.id)) {
+        socketIds.delete(socket.id);
+        disconnectedUserId = userId;
+
+        if (socketIds.size === 0) {
+          onlineUsers.delete(userId);
+          io.emit('user_status_change', { userId, status: 'offline' });
+        }
+        break;
+      }
+    }
   });
 });
 
@@ -338,6 +368,22 @@ app.get('/api/users/search', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Kunde inte söka användare'
+    });
+  }
+});
+
+// 1.5. Hämta lista över online-användare
+app.get('/api/users/online', requireAuth, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      onlineUserIds: Array.from(onlineUsers.keys()).map(id => parseInt(id))
+    });
+  } catch (error) {
+    console.error('Get online users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Kunde inte hämta online-statusen'
     });
   }
 });
