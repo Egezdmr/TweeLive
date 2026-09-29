@@ -499,6 +499,20 @@ app.post('/api/contacts/request', requireAuth, async (req, res) => {
       [userId, contactId]
     );
 
+    const requesterInfo = await pool.query(
+      'SELECT username FROM users WHERE id = $1',
+      [userId]
+    );
+
+    const socketIds = onlineUsers.get(parseInt(contactId, 10));
+    if (socketIds && socketIds.size > 0) {
+      socketIds.forEach(socketId => {
+        io.to(socketId).emit('friend_request_received', { 
+          from: requesterInfo.rows[0].username 
+        });
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Vänskapsförfrågan skickad',
@@ -519,6 +533,20 @@ app.put('/api/contacts/:id/accept', requireAuth, async (req, res) => {
     const { id } = req.params;
     const userId = req.session.user.id;
 
+    const contactQuery = await pool.query(
+      'SELECT user_id FROM contacts WHERE id = $1',
+      [id]
+    );
+
+    if (contactQuery.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Förfrågan hittades inte'
+      });
+    }
+
+    const requesterUserId = contactQuery.rows[0].user_id;
+
     // Update only if this user is the recipient
     const result = await pool.query(
       `UPDATE contacts
@@ -532,6 +560,29 @@ app.put('/api/contacts/:id/accept', requireAuth, async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Förfrågan hittades inte eller är redan accepterad'
+      });
+    }
+
+    const currentUserInfo = await pool.query(
+      'SELECT username FROM users WHERE id = $1',
+      [userId]
+    );
+
+    const requesterSocketIds = onlineUsers.get(parseInt(requesterUserId, 10));
+    if (requesterSocketIds && requesterSocketIds.size > 0) {
+      requesterSocketIds.forEach(socketId => {
+        io.to(socketId).emit('friend_request_accepted', { 
+          from: currentUserInfo.rows[0].username 
+        });
+      });
+    }
+
+    const recipientSocketIds = onlineUsers.get(parseInt(userId, 10));
+    if (recipientSocketIds && recipientSocketIds.size > 0) {
+      recipientSocketIds.forEach(socketId => {
+        io.to(socketId).emit('friend_request_accepted', { 
+          from: currentUserInfo.rows[0].username 
+        });
       });
     }
 
@@ -591,6 +642,20 @@ app.delete('/api/contacts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const userId = req.session.user.id;
 
+    const contactQuery = await pool.query(
+      'SELECT user_id, contact_id FROM contacts WHERE id = $1',
+      [id]
+    );
+
+    if (contactQuery.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Kontakt hittades inte'
+      });
+    }
+
+    const { user_id, contact_id } = contactQuery.rows[0];
+
     // Delete only if user is party to this relationship
     const result = await pool.query(
       `DELETE FROM contacts
@@ -605,6 +670,14 @@ app.delete('/api/contacts/:id', requireAuth, async (req, res) => {
         message: 'Kontakt hittades inte'
       });
     }
+
+    const targetIds = [parseInt(user_id, 10), parseInt(contact_id, 10)];
+    targetIds.forEach(targetId => {
+      const socketIds = onlineUsers.get(targetId);
+      if (socketIds) {
+        socketIds.forEach(sId => io.to(sId).emit('contact_removed', { contactRecordId: parseInt(id, 10) }));
+      }
+    });
 
     res.json({
       success: true,

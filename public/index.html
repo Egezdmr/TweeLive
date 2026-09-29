@@ -12,7 +12,7 @@
       align-items: center;
       min-height: 100vh;
       margin: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #5a7edc;
     }
     .auth-container {
       background: white;
@@ -26,32 +26,42 @@
     }
     .chat-container {
       display: none;
-      width: 100%;
-      height: 100vh;
-      background: #f5f5f5;
+      width: 950px;
+      height: 680px;
+      background: #ece9d8;
       flex-direction: column;
+      border: 2px solid #0055ea;
+      border-radius: 4px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     .chat-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(to bottom, #0058ee 0%, #3593ff 50%, #288eff 100%);
       color: white;
-      padding: 20px;
-      text-align: center;
-      font-size: 18px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
       font-weight: bold;
       position: relative;
+      border-bottom: 1px solid #004bb4;
     }
     .logout-btn {
-      position: absolute;
-      top: 15px;
-      right: 20px;
-      background: white;
-      color: #667eea;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
+      background: #ece9d8;
+      color: #000;
+      border: 1px solid #dfce56;
+      border-right: 2px solid #808080;
+      border-bottom: 2px solid #808080;
+      padding: 4px 12px;
       cursor: pointer;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 11px;
+      font-family: Tahoma, Arial;
+    }
+    .logout-btn:active {
+      border: 1px solid #808080;
+      border-right: 1px solid #dfce56;
+      border-bottom: 1px solid #dfce56;
     }
     .logout-btn:hover {
       background: #f0f0f0;
@@ -133,22 +143,43 @@
       margin-top: 3px;
     }
     button {
-      padding: 12px;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
+      padding: 6px 12px;
+      border: 1px solid #dfce56;
+      border-right: 2px solid #808080;
+      border-bottom: 2px solid #808080;
+      border-radius: 2px;
+      font-size: 12px;
       font-weight: bold;
+      font-family: Tahoma, Arial;
       cursor: pointer;
-      transition: background-color 0.3s;
+      background: #ece9d8;
+      color: #000;
+      transition: background-color 0.1s;
+    }
+    button:active {
+      border: 1px solid #808080;
+      border-right: 1px solid #dfce56;
+      border-bottom: 1px solid #dfce56;
+    }
+    button:hover {
+      background: #e8e4cc;
     }
     .btn-signin, .btn-signup {
       width: 100%;
       background-color: #667eea;
       color: white;
+      border: 1px solid #5568d3;
+      border-right: 2px solid #354a7f;
+      border-bottom: 2px solid #354a7f;
       margin-top: 20px;
     }
     .btn-signin:hover, .btn-signup:hover {
       background-color: #5568d3;
+    }
+    .btn-signin:active, .btn-signup:active {
+      border: 1px solid #354a7f;
+      border-right: 1px solid #5568d3;
+      border-bottom: 1px solid #5568d3;
     }
     .message {
       margin-top: 20px;
@@ -195,6 +226,40 @@
     }
     .status-offline {
       background-color: #9E9E9E;
+    }
+    #chatMessagesContainer {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      border: 1px solid #7f9db9;
+      background: #ffffff;
+      padding: 10px;
+    }
+    .msn-message-wrapper {
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .msn-sender-line {
+      font-weight: bold;
+      color: #222;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .msn-message-text {
+      color: #222;
+      font-size: 12px;
+      padding-left: 12px;
+      word-wrap: break-word;
+    }
+    .msn-nudge {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      margin: 6px 0;
+    }
+    .friend-item {
+      transition: background-color 0.2s;
+    }
+    .friend-item:hover {
+      background-color: #e3f2fd !important;
     }
   </style>
 </head>
@@ -293,23 +358,23 @@
 
     <div style="display: flex; height: calc(100% - 60px);">
       <!-- Left Sidebar -->
-      <div style="width: 300px; background: #e8e8e8; border-right: 1px solid #999; overflow-y: auto; flex-direction: column; display: flex;">
+      <div style="width: 280px; background: #e8e8e8; border-right: 1px solid #7f7f7f; overflow-y: auto; flex-direction: column; display: flex;">
 
         <!-- Search Section -->
-        <div style="padding: 15px; border-bottom: 1px solid #999;">
-          <h3 style="margin: 0 0 10px 0; font-size: 13px;">Sök användare</h3>
-          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+        <div style="padding: 10px; border-bottom: 1px solid #7f7f7f;">
+          <div style="font-weight: bold; color: #000; font-size: 11px; margin-bottom: 5px;">Sök användare</div>
+          <div style="display: flex; gap: 3px; margin-bottom: 8px;">
             <input
               type="text"
               id="userSearchInput"
-              placeholder="Sök användarnamn..."
-              style="flex: 1; padding: 6px; font-size: 12px; border: 1px solid #999; border-radius: 3px;"
+              placeholder="Användarnamn..."
+              style="flex: 1; padding: 4px; font-size: 11px; border: 1px solid #999; background: #fff;"
               onkeypress="handleSearchKeypress(event)"
             >
             <button
               id="userSearchBtn"
               onclick="performSearch()"
-              style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: bold;"
+              style="padding: 4px 8px; font-size: 11px;"
             >Sök</button>
           </div>
 
@@ -320,51 +385,51 @@
         </div>
 
         <!-- Kontakter -->
-        <div style="padding: 15px; border-bottom: 1px solid #999;">
-          <h3 style="margin: 0 0 10px 0; font-size: 13px;">Kontakter</h3>
-          <div id="friendsList" style="font-size: 12px;">
-            <p style="color: #666;">Inga kontakter än</p>
+        <div style="padding: 10px; border-bottom: 1px solid #7f7f7f;">
+          <div style="font-weight: bold; color: #000; font-size: 11px; margin-bottom: 5px;">Kontakter</div>
+          <div id="friendsList" style="font-size: 11px;">
+            <p style="color: #666; margin: 0; font-size: 11px;">Inga kontakter än</p>
           </div>
         </div>
 
         <!-- Pending Requests Section -->
-        <div style="padding: 15px; flex: 1; overflow-y: auto;">
-          <h3 style="margin: 0 0 10px 0; font-size: 13px;">Väntande förfrågningar</h3>
-          <div id="pendingRequestsList" style="font-size: 12px;">
-            <p style="color: #666;">Inga väntande förfrågningar</p>
+        <div style="padding: 10px; flex: 1; overflow-y: auto;">
+          <div style="font-weight: bold; color: #000; font-size: 11px; margin-bottom: 5px;">Väntande förfrågningar</div>
+          <div id="pendingRequestsList" style="font-size: 11px;">
+            <p style="color: #666; margin: 0; font-size: 11px;">Inga väntande förfrågningar</p>
           </div>
         </div>
       </div>
 
       <!-- Main Chat Area -->
-      <div style="flex: 1; display: flex; flex-direction: column; background: #f5f5f5;">
+      <div style="flex: 1; display: flex; flex-direction: column; background: #ece9d8;">
         <div id="noChatSelected" style="flex: 1; display: flex; align-items: center; justify-content: center;">
-          <p style="color: #999; font-size: 14px;">Välj en kontakt för att chatta</p>
+          <p style="color: #999; font-size: 12px;">Välj en kontakt för att chatta</p>
         </div>
 
         <div id="chatArea" style="display: none; flex-direction: column; height: 100%;">
-          <div id="activeChatHeader" style="background: #ddd; padding: 10px 15px; border-bottom: 1px solid #999; font-size: 13px;"></div>
+          <div id="activeChatHeader" style="background: #c0c0c0; padding: 4px 8px; border-bottom: 1px solid #7f7f7f; font-size: 11px; border-top: 1px solid #dfce56; border-left: 1px solid #dfce56; border-right: 2px solid #808080;"></div>
 
-          <div id="chatMessagesContainer" style="flex: 1; padding: 15px; overflow-y: auto;"></div>
+          <div id="chatMessagesContainer" style="flex: 1; padding: 10px; overflow-y: auto; background: #fff; border: 1px solid #7f9db9; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1); margin: 8px; font-size: 11px;"></div>
 
-          <div id="typingIndicator" style="display: none; padding: 8px 15px; font-size: 12px; color: #666; font-style: italic;"></div>
+          <div id="typingIndicator" style="display: none; padding: 4px 8px; font-size: 11px; color: #666; font-style: italic;"></div>
 
-          <form id="chatMessageForm" style="display: flex; gap: 8px; padding: 10px; border-top: 1px solid #999;">
+          <form id="chatMessageForm" style="display: flex; gap: 4px; padding: 8px; background: #ece9d8; border-top: 1px solid #dfce56;">
             <input
               type="text"
               id="chatMessageInput"
-              placeholder="Skriv ett meddelande..."
-              style="flex: 1; padding: 8px; border: 1px solid #999; border-radius: 3px; font-size: 13px;"
+              placeholder="Meddelande..."
+              style="flex: 1; padding: 4px 6px; border: 1px solid #999; background: #fff; font-size: 11px; font-family: Tahoma, Arial;"
             >
             <button
               type="submit"
-              style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;"
+              style="padding: 4px 12px; font-size: 11px;"
             >Skicka</button>
             <button
               type="button"
               id="nudgeBtn"
-              style="padding: 8px 16px; background: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;"
-            >Nudge</button>
+              style="padding: 4px 12px; font-size: 11px;"
+            >Titresha</button>
           </form>
         </div>
       </div>
@@ -465,6 +530,21 @@
       const indicator = document.getElementById('typingIndicator');
       indicator.style.display = 'none';
       indicator.textContent = '';
+    });
+
+    socket.on('friend_request_received', ({ from }) => {
+      loadContacts();
+    });
+
+    socket.on('friend_request_accepted', ({ from }) => {
+      loadContacts();
+    });
+
+    socket.on('contact_removed', ({ contactRecordId }) => {
+      if (activeChatUser && parseInt(activeChatUser.contactRecordId) === parseInt(contactRecordId)) {
+        resetChatArea();
+      }
+      loadContacts();
     });
 
     // Skrivindikator - debounce timer för typing_stop
@@ -597,7 +677,7 @@
       const list = document.getElementById('friendsList');
 
       if (!friends.length) {
-        list.innerHTML = '<p style="color: #666;">Inga kontakter än</p>';
+        list.innerHTML = '<p style="color: #666; margin: 0; font-size: 11px;">Inga kontakter än</p>';
         return;
       }
 
@@ -606,25 +686,28 @@
       friends.forEach(friend => {
         const isOnline = onlineUserIds.includes(friend.user_id);
         const statusClass = isOnline ? 'status-online' : 'status-offline';
-        const statusText = isOnline ? 'Online' : 'Offline';
 
         const item = document.createElement('div');
         item.setAttribute('data-user-id', friend.user_id);
-        item.style.cssText = 'padding: 8px; background: white; margin-bottom: 5px; border-radius: 3px; border: 1px solid #ddd; cursor: pointer;';
+        item.className = 'friend-item';
+        item.style.cssText = 'padding: 6px 4px; background: #e8e8e8; margin-bottom: 2px; cursor: pointer; border-left: 3px solid transparent; font-size: 11px;';
+        
         item.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <strong>${friend.username}</strong>
-              <span class="status-indicator ${statusClass}" title="${statusText}"></span><br>
-              <small style="color: #666;">${friend.email}</small>
+            <div style="flex: 1;">
+              <span class="status-indicator ${statusClass}" style="margin-right: 4px;"></span><strong>${friend.username}</strong><br>
+              <small style="color: #666; font-size: 10px; margin-left: 14px;">${friend.email}</small>
             </div>
-            <button style="padding: 4px 8px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 10px; font-weight: bold;">
+            <button style="padding: 2px 6px; background: #c0c0c0; border: 1px solid #dfce56; border-right: 2px solid #808080; border-bottom: 2px solid #808080; cursor: pointer; font-size: 10px; font-family: Tahoma, Arial; margin-left: 4px;">
               Ta bort
             </button>
           </div>
         `;
 
         item.addEventListener('click', () => openChatWith(friend));
+        item.addEventListener('mouseenter', () => item.style.background = '#d0d0d0');
+        item.addEventListener('mouseleave', () => item.style.background = '#e8e8e8');
+        
         item.querySelector('button').addEventListener('click', (event) => {
           event.stopPropagation();
           removeContact(friend);
@@ -759,24 +842,32 @@
           setTimeout(() => chatArea.classList.remove('nudge-shake'), 500);
         }
 
+        const timestamp = new Date(message.created_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
         const nudgeWrapper = document.createElement('div');
-        nudgeWrapper.style.cssText = 'text-align: center; margin-bottom: 6px;';
-        nudgeWrapper.innerHTML = `<em style="color: #666;">${message.sender_username}: ${message.content}</em>`;
+        nudgeWrapper.className = 'msn-nudge';
+        nudgeWrapper.textContent = `* ${message.sender_username} skickade en nudge (${timestamp}) *`;
         container.appendChild(nudgeWrapper);
         return;
       }
 
       const isOwnMessage = parseInt(message.sender_id) === parseInt(currentUserId);
 
-      const bubbleWrapper = document.createElement('div');
-      bubbleWrapper.style.cssText = `display: flex; margin-bottom: 6px; ${isOwnMessage ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}`;
+      const timestamp = new Date(message.created_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+      const messageWrapper = document.createElement('div');
+      messageWrapper.className = 'msn-message-wrapper';
 
-      const bubble = document.createElement('div');
-      bubble.style.cssText = `padding: 6px 10px; border-radius: 4px; max-width: 70%; ${isOwnMessage ? 'background: #667eea; color: white;' : 'background: #e0e0e0; color: black;'}`;
-      bubble.innerHTML = `<strong>${message.sender_username}</strong><br>${message.content}`;
+      const senderLine = document.createElement('div');
+      senderLine.className = 'msn-sender-line';
+      senderLine.style.color = isOwnMessage ? '#1976d2' : '#d32f2f';
+      senderLine.textContent = `${message.sender_username} säger (${timestamp}):`;
 
-      bubbleWrapper.appendChild(bubble);
-      container.appendChild(bubbleWrapper);
+      const messageText = document.createElement('div');
+      messageText.className = 'msn-message-text';
+      messageText.textContent = message.content;
+
+      messageWrapper.appendChild(senderLine);
+      messageWrapper.appendChild(messageText);
+      container.appendChild(messageWrapper);
     }
 
     // Nollställer chattvyn, t.ex. efter borttagen kontakt
