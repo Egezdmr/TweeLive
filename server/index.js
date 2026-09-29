@@ -41,6 +41,14 @@ io.on('connection', (socket) => {
     socket.join('conv_' + conversationId);
   });
 
+  socket.on('typing_start', ({ conversationId, username }) => {
+    socket.to('conv_' + conversationId).emit('user_typing', { username });
+  });
+
+  socket.on('typing_stop', ({ conversationId }) => {
+    socket.to('conv_' + conversationId).emit('user_stop_typing');
+  });
+
   socket.on('disconnect', () => {
     let disconnectedUserId = null;
     for (const [userId, socketIds] of onlineUsers.entries()) {

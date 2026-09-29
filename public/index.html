@@ -347,6 +347,8 @@
 
           <div id="chatMessagesContainer" style="flex: 1; padding: 15px; overflow-y: auto;"></div>
 
+          <div id="typingIndicator" style="display: none; padding: 8px 15px; font-size: 12px; color: #666; font-style: italic;"></div>
+
           <form id="chatMessageForm" style="display: flex; gap: 8px; padding: 10px; border-top: 1px solid #999;">
             <input
               type="text"
@@ -452,6 +454,30 @@
       }
       updateContactStatusUI(userId, status);
     });
+
+    socket.on('user_typing', ({ username }) => {
+      const indicator = document.getElementById('typingIndicator');
+      indicator.textContent = `${username} skriver ett meddelande...`;
+      indicator.style.display = 'block';
+    });
+
+    socket.on('user_stop_typing', () => {
+      const indicator = document.getElementById('typingIndicator');
+      indicator.style.display = 'none';
+      indicator.textContent = '';
+    });
+
+    // Skrivindikator - debounce timer för typing_stop
+    let typingTimeout = null;
+
+    function resetTypingTimeout() {
+      if (typingTimeout) clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        if (activeChatUser && activeChatUser.conversationId) {
+          socket.emit('typing_stop', { conversationId: activeChatUser.conversationId });
+        }
+      }, 2500);
+    }
 
     // Search users
     async function performSearch() {
@@ -654,6 +680,13 @@
 
     // Öppnar chattfönstret mot en vald kontakt och hämtar konversationen
     async function openChatWith(friend) {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+      }
+      document.getElementById('typingIndicator').style.display = 'none';
+      document.getElementById('typingIndicator').textContent = '';
+
       activeChatUser = {
         id: friend.user_id,
         username: friend.username,
@@ -748,6 +781,13 @@
 
     // Nollställer chattvyn, t.ex. efter borttagen kontakt
     function resetChatArea() {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+      }
+      document.getElementById('typingIndicator').style.display = 'none';
+      document.getElementById('typingIndicator').textContent = '';
+
       activeChatUser = null;
       document.getElementById('chatArea').style.display = 'none';
       document.getElementById('noChatSelected').style.display = 'flex';
@@ -761,6 +801,12 @@
       const input = document.getElementById('chatMessageInput');
       const text = input.value.trim();
       if (!text || !activeChatUser || !activeChatUser.conversationId) return;
+
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+        socket.emit('typing_stop', { conversationId: activeChatUser.conversationId });
+      }
 
       try {
         const response = await fetch(`/api/conversations/${activeChatUser.conversationId}/messages`, {
@@ -780,6 +826,26 @@
       } catch (error) {
         console.error('Send message error:', error);
         alert('Kunde inte skicka meddelandet');
+      }
+    });
+
+    // Lyssnar på tangenttryckningar för skrivindikator
+    document.getElementById('chatMessageInput').addEventListener('input', () => {
+      if (!activeChatUser || !activeChatUser.conversationId) return;
+
+      const input = document.getElementById('chatMessageInput');
+      if (input.value.trim().length > 0) {
+        socket.emit('typing_start', { 
+          conversationId: activeChatUser.conversationId, 
+          username: currentUsername 
+        });
+        resetTypingTimeout();
+      } else {
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+          typingTimeout = null;
+        }
+        socket.emit('typing_stop', { conversationId: activeChatUser.conversationId });
       }
     });
 
