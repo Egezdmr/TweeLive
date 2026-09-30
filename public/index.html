@@ -482,6 +482,7 @@
             socket.disconnect();
             socket.connect();
           }
+          unreadCounts = {};
           showAuthContainer();
           document.getElementById('loginForm').reset();
         }
@@ -500,12 +501,20 @@
     let currentUsername = null;
     let currentUserId = null;
     let onlineUserIds = [];
+    let unreadCounts = {};
 
     socket.on('new_message', (message) => {
-      if (activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(message.conversation_id)) {
+      const isCurrentActive = activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(message.conversation_id);
+      const isFromOtherUser = parseInt(message.sender_id) !== parseInt(currentUserId);
+
+      if (isCurrentActive) {
         appendMessageBubble(message, true);
         const container = document.getElementById('chatMessagesContainer');
         container.scrollTop = container.scrollHeight;
+      } else if (isFromOtherUser) {
+        const senderId = parseInt(message.sender_id);
+        unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
+        updateUnreadBadgeUI(senderId);
       }
     });
 
@@ -686,6 +695,7 @@
       friends.forEach(friend => {
         const isOnline = onlineUserIds.includes(friend.user_id);
         const statusClass = isOnline ? 'status-online' : 'status-offline';
+        const unreadCount = unreadCounts[friend.user_id] || 0;
 
         const item = document.createElement('div');
         item.setAttribute('data-user-id', friend.user_id);
@@ -695,7 +705,8 @@
         item.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="flex: 1;">
-              <span class="status-indicator ${statusClass}" style="margin-right: 4px;"></span><strong>${friend.username}</strong><br>
+              <span class="status-indicator ${statusClass}" style="margin-right: 4px;"></span><strong>${friend.username}</strong>
+              <span data-badge-for="${friend.user_id}" style="display: ${unreadCount > 0 ? 'inline-block' : 'none'}; background: #ff6600; color: white; border-radius: 10px; padding: 0px 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">${unreadCount}</span><br>
               <small style="color: #666; font-size: 10px; margin-left: 14px;">${friend.email}</small>
             </div>
             <button style="padding: 2px 6px; background: #c0c0c0; border: 1px solid #dfce56; border-right: 2px solid #808080; border-bottom: 2px solid #808080; cursor: pointer; font-size: 10px; font-family: Tahoma, Arial; margin-left: 4px;">
@@ -735,6 +746,19 @@
       }
     }
 
+    function updateUnreadBadgeUI(userId) {
+      const badge = document.querySelector(`[data-badge-for="${userId}"]`);
+      if (!badge) return;
+
+      const count = unreadCounts[userId] || 0;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
     async function removeContact(friend) {
       const confirmed = confirm('Är du säker på att du vill ta bort kontakten?');
       if (!confirmed) return;
@@ -769,6 +793,9 @@
       }
       document.getElementById('typingIndicator').style.display = 'none';
       document.getElementById('typingIndicator').textContent = '';
+
+      unreadCounts[friend.user_id] = 0;
+      updateUnreadBadgeUI(friend.user_id);
 
       activeChatUser = {
         id: friend.user_id,
