@@ -166,7 +166,7 @@ app.post('/api/login', async (req, res) => {
   try {
     // Find user by username OR email
     const result = await pool.query(
-      'SELECT id, username, email, password FROM users WHERE username = $1 OR email = $1',
+      'SELECT id, username, email, password, status_message FROM users WHERE username = $1 OR email = $1',
       [identifier]
     );
 
@@ -187,7 +187,8 @@ app.post('/api/login', async (req, res) => {
       req.session.user = {
         id: user.id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        status_message: user.status_message || ''
       };
 
       return res.json({
@@ -195,7 +196,8 @@ app.post('/api/login', async (req, res) => {
         message: 'Inloggning lyckades!',
         user: {
           id: user.id,
-          username: user.username
+          username: user.username,
+          status_message: user.status_message || ''
         }
       });
     } else {
@@ -403,7 +405,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
 
     // Get friends (accepted contacts - both directions)
     const friendsResult = await pool.query(
-      `SELECT c.id, u.id as user_id, u.username, u.email, c.status, c.created_at
+      `SELECT c.id, u.id as user_id, u.username, u.email, u.status_message, c.status, c.created_at
        FROM contacts c
        JOIN users u ON (
          (c.user_id = $1 AND u.id = c.contact_id) OR
@@ -415,7 +417,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
 
     // Get pending requests (others sending to this user)
     const pendingResult = await pool.query(
-      `SELECT c.id, u.id as user_id, u.username, u.email, c.status, c.created_at
+      `SELECT c.id, u.id as user_id, u.username, u.email, u.status_message, c.status, c.created_at
        FROM contacts c
        JOIN users u ON u.id = c.user_id
        WHERE c.contact_id = $1 AND c.status = 'pending'`,
@@ -424,7 +426,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
 
     // Get blocked users (this user blocked them)
     const blockedResult = await pool.query(
-      `SELECT c.id, u.id as user_id, u.username, u.email, c.status, c.created_at
+      `SELECT c.id, u.id as user_id, u.username, u.email, u.status_message, c.status, c.created_at
        FROM contacts c
        JOIN users u ON u.id = c.contact_id
        WHERE c.user_id = $1 AND c.status = 'blocked'`,
@@ -854,6 +856,46 @@ app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Kunde inte skicka meddelandet'
+    });
+  }
+});
+
+// Uppdatera personligt statusmeddelande
+app.put('/api/users/status-message', requireAuth, async (req, res) => {
+  try {
+    const { statusMessage } = req.body;
+    const userId = req.session.user.id;
+
+    const trimmedMessage = (statusMessage || '').trim().substring(0, 120);
+
+    const result = await pool.query(
+      'UPDATE users SET status_message = $1 WHERE id = $2 RETURNING id, status_message',
+      [trimmedMessage, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Användare hittades inte'
+      });
+    }
+
+    req.session.user.status_message = trimmedMessage;
+
+    io.emit('user_status_message_change', {
+      userId: userId,
+      statusMessage: trimmedMessage
+    });
+
+    res.json({
+      success: true,
+      statusMessage: trimmedMessage
+    });
+  } catch (error) {
+    console.error('Update status message error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Kunde inte uppdatera statusmeddelandet'
     });
   }
 });
