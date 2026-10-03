@@ -845,7 +845,23 @@ app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
       sender_username: req.session.user.username
     };
 
+    // Skicka till alla som är med i konversationsrummet (om de är där)
     io.to('conv_' + id).emit('new_message', savedMessage);
+
+    // Skicka även direkt till alla anslutna sockets för konversationens deltagare
+    const participants = await pool.query(
+      'SELECT user_id FROM conversation_participants WHERE conversation_id = $1',
+      [id]
+    );
+
+    participants.rows.forEach(p => {
+      const socketIds = onlineUsers.get(parseInt(p.user_id, 10));
+      if (socketIds) {
+        socketIds.forEach(sId => {
+          io.to(sId).emit('new_message', savedMessage);
+        });
+      }
+    });
 
     res.status(201).json({
       success: true,
