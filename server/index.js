@@ -6,6 +6,8 @@ import pkg from 'pg';
 import session from 'express-session';
 import http from 'http';
 import { Server } from 'socket.io';
+import multer from 'multer';
+import { createClient } from '@supabase/supabase-js';
 import { hashPassword, comparePassword } from '../security/passwordUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,6 +23,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Verifiera Supabase environment variabler
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  console.warn('⚠️  VARNING: SUPABASE_URL eller SUPABASE_ANON_KEY saknas. Filuppladdning kommer inte att fungera.');
+}
+
+// Initiera Supabase-klienten
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_ANON_KEY || ''
+);
+
+// Konfigurera Multer för minnesutrymme
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 3 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  }
+});
 
 // userId -> Set med socketIds (stödjer flera flikar från samma användare)
 const onlineUsers = new Map();
@@ -872,6 +898,107 @@ app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Kunde inte skicka meddelandet'
+    });
+  }
+});
+
+// Filuppladdning för bilder och ljud
+app.post('/api/conversations/:id/upload', requireAuth, upload.single('file'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ingen fil uppladdad eller ogiltigt filformat (endast bilder och ljud tillåts).'
+      });
+    }
+
+    // Verifiera att användaren är deltagare i konversationen
+    const participantCheck = await pool.query(
+      'SELECT 1 FROM conversation_participants WHERE conversation_id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    if (participantCheck.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Du har inte åtkomst till denna konversation'
+      });
+    }
+
+    // Rensa filnamn: ersätt specialtecken och mellanslag med understreck
+    const sanitizedName = req.file.originalname
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/\s+/g, '_');
+
+    // Generera unikt filnamn
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${sanitizedName}`;
+
+    // Ladda upp till Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('chat_attachments')
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      return res.status(500).json({
+        success: false,
+        message: 'Kunde inte ladda upp filen till molnet'
+      });
+    }
+
+    // Hämta offentlig URL
+    const { data: publicUrlData } = supabase.storage
+      .from('chat_attachments')
+      .getPublicUrl(fileName);
+
+    const fileUrl = publicUrlData.publicUrl;
+    const messageType = req.file.mimetype.startsWith('image/') ? 'image' : 'audio';
+
+    // Spara meddelandet i databasen
+    const result = await pool.query(
+      `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, conversation_id, sender_id, content, message_type, created_at`,
+      [id, userId, fileUrl, messageType]
+    );
+
+    const savedMessage = {
+      ...result.rows[0],
+      sender_username: req.session.user.username
+    };
+
+    // Skicka meddelandet till alla deltagare
+    //io.to('conv_' + id).emit('new_message', savedMessage);
+
+    const participants = await pool.query(
+      'SELECT user_id FROM conversation_participants WHERE conversation_id = $1',
+      [id]
+    );
+
+    participants.rows.forEach(p => {
+      const socketIds = onlineUsers.get(parseInt(p.user_id, 10));
+      if (socketIds) {
+        socketIds.forEach(sId => {
+          io.to(sId).emit('new_message', savedMessage);
+        });
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: savedMessage
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Kunde inte ladda upp filen'
     });
   }
 });

@@ -430,10 +430,21 @@
               placeholder="Meddelande..."
               style="flex: 1; padding: 4px 6px; border: 1px solid #999; background: #fff; font-size: 11px; font-family: Tahoma, Arial;"
             >
+            <input
+              type="file"
+              id="chatFileInput"
+              accept="image/*,audio/*"
+              style="display: none;"
+            >
             <button
               type="submit"
               style="padding: 4px 12px; font-size: 11px;"
             >Skicka</button>
+            <button
+              type="button"
+              id="attachFileBtn"
+              style="padding: 4px 12px; font-size: 11px;"
+            >Bifoga...</button>
             <button
               type="button"
               id="nudgeBtn"
@@ -928,7 +939,6 @@
       }
 
       const isOwnMessage = parseInt(message.sender_id) === parseInt(currentUserId);
-
       const timestamp = new Date(message.created_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
       const messageWrapper = document.createElement('div');
       messageWrapper.className = 'msn-message-wrapper';
@@ -938,12 +948,39 @@
       senderLine.style.color = isOwnMessage ? '#1976d2' : '#d32f2f';
       senderLine.textContent = `${message.sender_username} säger (${timestamp}):`;
 
-      const messageText = document.createElement('div');
-      messageText.className = 'msn-message-text';
-      messageText.textContent = message.content;
-
       messageWrapper.appendChild(senderLine);
-      messageWrapper.appendChild(messageText);
+
+      // Hantera bilder
+      if (message.message_type === 'image') {
+        const imageContainer = document.createElement('div');
+        imageContainer.style.cssText = 'padding-left: 12px; margin-top: 4px;';
+        const img = document.createElement('img');
+        img.src = message.content;
+        img.alt = 'Bifogad bild';
+        img.style.cssText = 'max-width: 200px; max-height: 200px; border: 1px solid #ccc; cursor: pointer; border-radius: 3px;';
+        img.addEventListener('click', () => window.open(message.content, '_blank'));
+        imageContainer.appendChild(img);
+        messageWrapper.appendChild(imageContainer);
+      }
+      // Hantera ljud
+      else if (message.message_type === 'audio') {
+        const audioContainer = document.createElement('div');
+        audioContainer.style.cssText = 'padding-left: 12px; margin-top: 4px;';
+        const audio = document.createElement('audio');
+        audio.src = message.content;
+        audio.controls = true;
+        audio.style.cssText = 'max-width: 250px; height: 28px;';
+        audioContainer.appendChild(audio);
+        messageWrapper.appendChild(audioContainer);
+      }
+      // Vanlig textmeddelande
+      else {
+        const messageText = document.createElement('div');
+        messageText.className = 'msn-message-text';
+        messageText.textContent = message.content;
+        messageWrapper.appendChild(messageText);
+      }
+
       container.appendChild(messageWrapper);
     }
 
@@ -1014,6 +1051,58 @@
           typingTimeout = null;
         }
         socket.emit('typing_stop', { conversationId: activeChatUser.conversationId });
+      }
+    });
+
+    // Bifoga fil (bild eller ljud)
+    document.getElementById('attachFileBtn').addEventListener('click', () => {
+      document.getElementById('chatFileInput').click();
+    });
+
+    document.getElementById('chatFileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!activeChatUser || !activeChatUser.conversationId) {
+        alert('Välj en chatt först');
+        return;
+      }
+
+      if (file.size > 3 * 1024 * 1024) {
+        alert('Filen är för stor (max 3 MB)');
+        document.getElementById('chatFileInput').value = '';
+        return;
+      }
+
+      const attachBtn = document.getElementById('attachFileBtn');
+      attachBtn.disabled = true;
+      attachBtn.textContent = 'Laddar upp...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch(`/api/conversations/${activeChatUser.conversationId}/upload`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('chatFileInput').value = '';
+        } else {
+          alert('Fel: ' + data.message);
+          document.getElementById('chatFileInput').value = '';
+        }
+      } catch (error) {
+        console.error('File upload error:', error);
+        alert('Kunde inte ladda upp filen');
+        document.getElementById('chatFileInput').value = '';
+      } finally {
+        attachBtn.disabled = false;
+        attachBtn.textContent = 'Bifoga...';
       }
     });
 
