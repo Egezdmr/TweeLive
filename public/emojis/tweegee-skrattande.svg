@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="titel">
+  <title id="titel">Skrattande chibi-avatar</title>
+  <g stroke="#38251F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#FCD0A1" d="M5 17C0 15 1 23 5 23M27 17C32 15 31 23 27 23"/>
+    <ellipse fill="#FFE0BD" cx="16" cy="18" rx="12" ry="12"/>
+    <path fill="#563629" d="M4 16L3 10L6 10L5 5L10 6L13 2L17 5L23 3L23 7L28 8L27 16L23 12L21 16L17 10L13 14L11 10L7 15L7 12Z"/>
+    <path fill="none" stroke="#986249" d="M8 8L11 8M16 6L20 8"/>
+    <path fill="none" stroke-width="2" d="M7.5 20Q10.5 15 13.5 20M18.5 20Q21.5 15 24.5 20"/>
+    <path fill="#6D302C" d="M11 23H21Q21 29 16 29Q11 29 11 23Z"/>
+    <path fill="#FFF" stroke="none" d="M12 23.8H20L19.5 25H12.5Z"/>
+    <path fill="#F58B98" stroke="none" d="M13 27Q16 25.5 19 27Q16 29 13 27Z"/>
+  </g>
+  <g fill="#F18D87" opacity=".65"><ellipse cx="7" cy="23" rx="2" ry="1"/><ellipse cx="25" cy="23" rx="2" ry="1"/></g>
+</svg>

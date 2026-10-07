@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="titel">
+  <title id="titel">Förälskad chibi-avatar</title>
+  <g stroke="#38251F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#FCD0A1" d="M5 17C0 15 1 23 5 23M27 17C32 15 31 23 27 23"/>
+    <ellipse fill="#FFE0BD" cx="16" cy="18" rx="12" ry="12"/>
+    <path fill="#563629" d="M4 16L3 10L6 10L5 5L10 6L13 2L17 5L23 3L23 7L28 8L27 16L23 12L21 16L17 10L13 14L11 10L7 15L7 12Z"/>
+    <path fill="none" stroke="#986249" d="M8 8L11 8M16 6L20 8"/>
+    <path fill="#F34C73" stroke="#8C2944" d="M10.5 17C6 13 4 19 10.5 23C17 19 15 13 10.5 17ZM21.5 17C17 13 15 19 21.5 23C28 19 26 13 21.5 17Z"/>
+    <path fill="none" stroke="#FFB8CC" stroke-width="1" d="M7.5 17.5L8 17M18.5 17.5L19 17"/>
+    <path fill="#6D302C" d="M13 25H19Q18.5 29 16 29Q13.5 29 13 25Z"/>
+  </g>
+  <g fill="#F18D87" opacity=".8"><ellipse cx="7" cy="24.5" rx="2.5" ry="1.5"/><ellipse cx="25" cy="24.5" rx="2.5" ry="1.5"/></g>
+</svg>

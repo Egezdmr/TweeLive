@@ -872,7 +872,7 @@ app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
     };
 
     // Skicka till alla som är med i konversationsrummet (om de är där)
-    io.to('conv_' + id).emit('new_message', savedMessage);
+    //io.to('conv_' + id).emit('new_message', savedMessage);
 
     // Skicka även direkt till alla anslutna sockets för konversationens deltagare
     const participants = await pool.query(

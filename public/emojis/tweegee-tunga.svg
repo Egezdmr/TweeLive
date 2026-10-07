@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="titel">
+  <title id="titel">Chibi-avatar som räcker ut tungan</title>
+  <g stroke="#38251F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#FCD0A1" d="M5 17C0 15 1 23 5 23M27 17C32 15 31 23 27 23"/>
+    <ellipse fill="#FFE0BD" cx="16" cy="18" rx="12" ry="12"/>
+    <path fill="#563629" d="M4 16L3 10L6 10L5 5L10 6L13 2L17 5L23 3L23 7L28 8L27 16L23 12L21 16L17 10L13 14L11 10L7 15L7 12Z"/>
+    <path fill="none" stroke="#986249" d="M8 8L11 8M16 6L20 8"/>
+    <ellipse fill="#FFF" cx="10.5" cy="19" rx="3" ry="4"/>
+    <ellipse fill="#FFF" cx="21.5" cy="19" rx="3" ry="4"/>
+    <path fill="#713F2B" stroke="none" d="M10.5 16.5a2 3 0 1 0 0 6a2 3 0 1 0 0-6M21.5 16.5a2 3 0 1 0 0 6a2 3 0 1 0 0-6"/>
+    <path fill="#6D302C" d="M11 24Q16 26 21 24Q20 28 16 28Q12 28 11 24Z"/>
+    <path fill="#F58B98" d="M14 26H20V28Q20 31 17 31Q14 31 14 28Z"/>
+    <path fill="none" stroke="#C45A70" stroke-width="1" d="M17 27V29"/>
+  </g>
+  <g fill="#FFF"><circle cx="10" cy="17.5" r="1"/><circle cx="21" cy="17.5" r="1"/></g>
+</svg>

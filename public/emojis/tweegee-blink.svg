@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="titel">
+  <title id="titel">Blinkande chibi-avatar</title>
+  <g stroke="#38251F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#FCD0A1" d="M5 17C0 15 1 23 5 23M27 17C32 15 31 23 27 23"/>
+    <ellipse fill="#FFE0BD" cx="16" cy="18" rx="12" ry="12"/>
+    <path fill="#563629" d="M4 16L3 10L6 10L5 5L10 6L13 2L17 5L23 3L23 7L28 8L27 16L23 12L21 16L17 10L13 14L11 10L7 15L7 12Z"/>
+    <path fill="none" stroke="#986249" d="M8 8L11 8M16 6L20 8"/>
+    <ellipse fill="#FFF" cx="10.5" cy="19" rx="3" ry="4"/>
+    <ellipse fill="#713F2B" stroke="none" cx="10.5" cy="19.5" rx="2" ry="3"/>
+    <path fill="none" stroke-width="2" d="M19 20L22 18L25 20"/>
+    <path fill="none" d="M12 25Q16 29 20 24"/>
+  </g>
+  <circle fill="#FFF" cx="10" cy="17.5" r="1"/>
+  <g fill="#F18D87" opacity=".65"><ellipse cx="7" cy="24" rx="2" ry="1"/><ellipse cx="25" cy="24" rx="2" ry="1"/></g>
+</svg>

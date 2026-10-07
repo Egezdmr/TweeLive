@@ -249,6 +249,45 @@
       padding-left: 12px;
       word-wrap: break-word;
     }
+    .chatt-emoji {
+      width: 22px;
+      height: 22px;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    #chatMessageForm {
+      position: relative;
+    }
+    #chatMessageInput {
+      min-width: 0;
+    }
+    .emoji-popup {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 8px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(6, 32px);
+      gap: 4px;
+      padding: 6px;
+      background: #ece9d8;
+      border: 1px solid #0055ea;
+      box-shadow: 2px 2px 0 #808080, inset 1px 1px 0 #fff;
+    }
+    .emoji-popup[hidden] {
+      display: none;
+    }
+    .emoji-popup button {
+      padding: 4px;
+      line-height: 0;
+      background: #f5f4ea;
+      border: 1px solid #aca899;
+    }
+    .emoji-popup button:hover,
+    .emoji-popup button:focus-visible {
+      background: #e3f2fd;
+      outline: 1px solid #0055ea;
+    }
     .msn-nudge {
       text-align: center;
       color: #666;
@@ -424,6 +463,7 @@
           <div id="typingIndicator" style="display: none; padding: 4px 8px; font-size: 11px; color: #666; font-style: italic;"></div>
 
           <form id="chatMessageForm" style="display: flex; gap: 4px; padding: 8px; background: #ece9d8; border-top: 1px solid #dfce56;">
+            <div id="emojiPopup" class="emoji-popup" role="group" aria-label="Välj en smiley" hidden></div>
             <input
               type="text"
               id="chatMessageInput"
@@ -450,6 +490,13 @@
               id="nudgeBtn"
               style="padding: 4px 12px; font-size: 11px;"
             >Titresha</button>
+            <button
+              type="button"
+              id="emojiBtn"
+              aria-controls="emojiPopup"
+              aria-expanded="false"
+              style="padding: 4px 8px; font-size: 11px;"
+            >Smiley</button>
           </form>
         </div>
       </div>
@@ -460,6 +507,7 @@
   <script>
     // ===== SESSION MANAGEMENT =====
     function showAuthContainer() {
+      stangEmojiMeny();
       document.getElementById('authContainer').style.display = 'block';
       document.getElementById('chatContainer').style.display = 'none';
     }
@@ -539,6 +587,79 @@
     let currentUserId = null;
     let onlineUserIds = [];
     let unreadCounts = {};
+
+    const emojier = [
+      { kod: ':)', fil: 'tweegee-glad.svg', namn: 'Glad' },
+      { kod: ':D', fil: 'tweegee-skrattande.svg', namn: 'Skrattande' },
+      { kod: ';)', fil: 'tweegee-blink.svg', namn: 'Blinkande' },
+      { kod: ':P', fil: 'tweegee-tunga.svg', namn: 'Räcker ut tungan' },
+      { kod: '(L)', fil: 'tweegee-foralskad.svg', namn: 'Förälskad' },
+      { kod: ':(', fil: 'tweegee-ledsen.svg', namn: 'Ledsen' }
+    ];
+
+    function skapaEmojiBild(emoji) {
+      const bild = document.createElement('img');
+      bild.src = `/emojis/${emoji.fil}`;
+      bild.alt = emoji.kod;
+      bild.title = emoji.namn;
+      bild.className = 'chatt-emoji';
+      return bild;
+    }
+
+    function visaTextMedEmojier(element, text) {
+      // Textnoder bevarar vanlig text utan att tolka HTML från meddelanden.
+      const monster = /:\)|:D|;\)|:P|\(L\)|:\(/g;
+      let position = 0;
+      for (const matchning of text.matchAll(monster)) {
+        element.appendChild(document.createTextNode(text.slice(position, matchning.index)));
+        const emoji = emojier.find(emoji => emoji.kod === matchning[0]);
+        element.appendChild(skapaEmojiBild(emoji));
+        position = matchning.index + matchning[0].length;
+      }
+      element.appendChild(document.createTextNode(text.slice(position)));
+    }
+
+    function stangEmojiMeny() {
+      document.getElementById('emojiPopup').hidden = true;
+      document.getElementById('emojiBtn').setAttribute('aria-expanded', 'false');
+    }
+
+    const emojiPopup = document.getElementById('emojiPopup');
+    const emojiKnapp = document.getElementById('emojiBtn');
+    emojier.forEach(emoji => {
+      const valknapp = document.createElement('button');
+      valknapp.type = 'button';
+      valknapp.title = `${emoji.namn} ${emoji.kod}`;
+      valknapp.setAttribute('aria-label', valknapp.title);
+      valknapp.appendChild(skapaEmojiBild(emoji));
+      valknapp.addEventListener('click', () => {
+        const falt = document.getElementById('chatMessageInput');
+        const start = falt.selectionStart;
+        const slut = falt.selectionEnd;
+        falt.setRangeText(emoji.kod, start, slut, 'end');
+        stangEmojiMeny();
+        falt.focus();
+        falt.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      emojiPopup.appendChild(valknapp);
+    });
+
+    emojiKnapp.addEventListener('click', () => {
+      emojiPopup.hidden = !emojiPopup.hidden;
+      emojiKnapp.setAttribute('aria-expanded', String(!emojiPopup.hidden));
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!emojiPopup.contains(event.target) && !emojiKnapp.contains(event.target)) {
+        stangEmojiMeny();
+      }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !emojiPopup.hidden) {
+        stangEmojiMeny();
+        emojiKnapp.focus();
+      }
+    });
 
     socket.on('new_message', (message) => {
       const isCurrentActive = activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(message.conversation_id);
@@ -847,6 +968,7 @@
 
     // Öppnar chattfönstret mot en vald kontakt och hämtar konversationen
     async function openChatWith(friend) {
+      stangEmojiMeny();
       if (typingTimeout) {
         clearTimeout(typingTimeout);
         typingTimeout = null;
@@ -977,7 +1099,7 @@
       else {
         const messageText = document.createElement('div');
         messageText.className = 'msn-message-text';
-        messageText.textContent = message.content;
+        visaTextMedEmojier(messageText, message.content);
         messageWrapper.appendChild(messageText);
       }
 
@@ -986,6 +1108,7 @@
 
     // Nollställer chattvyn, t.ex. efter borttagen kontakt
     function resetChatArea() {
+      stangEmojiMeny();
       if (typingTimeout) {
         clearTimeout(typingTimeout);
         typingTimeout = null;
@@ -1002,6 +1125,7 @@
     // Skickar meddelandet till backend, mottas via socket för visning
     document.getElementById('chatMessageForm').addEventListener('submit', async (event) => {
       event.preventDefault();
+      stangEmojiMeny();
 
       const input = document.getElementById('chatMessageInput');
       const text = input.value.trim();
