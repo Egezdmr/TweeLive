@@ -1,0 +1,295 @@
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #5a7edc;
+    }
+    .auth-container {
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .chat-container {
+      display: none;
+      width: 950px;
+      height: 680px;
+      background: #ece9d8;
+      flex-direction: column;
+      border: 2px solid #0055ea;
+      border-radius: 4px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .chat-header {
+      background: linear-gradient(to bottom, #0058ee 0%, #3593ff 50%, #288eff 100%);
+      color: white;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: bold;
+      position: relative;
+      border-bottom: 1px solid #004bb4;
+    }
+    .logout-btn {
+      background: #ece9d8;
+      color: #000;
+      border: 1px solid #dfce56;
+      border-right: 2px solid #808080;
+      border-bottom: 2px solid #808080;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 11px;
+      font-family: Tahoma, Arial;
+    }
+    .logout-btn:active {
+      border: 1px solid #808080;
+      border-right: 1px solid #dfce56;
+      border-bottom: 1px solid #dfce56;
+    }
+    .logout-btn:hover {
+      background: #f0f0f0;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: #e0e0e0;
+      color: #333;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    .tab-btn.active {
+      background: #667eea;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-weight: bold;
+      font-size: 13px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+    }
+    .validation-msg {
+      font-size: 12px;
+      margin-top: 3px;
+      display: none;
+    }
+    .validation-msg.error {
+      color: #d32f2f;
+      display: block;
+    }
+    .validation-msg.success {
+      color: #388e3c;
+      display: block;
+    }
+    .validation-msg a {
+      color: #d32f2f;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .validation-msg small {
+      display: block;
+      margin-top: 3px;
+    }
+    button {
+      padding: 6px 12px;
+      border: 1px solid #dfce56;
+      border-right: 2px solid #808080;
+      border-bottom: 2px solid #808080;
+      border-radius: 2px;
+      font-size: 12px;
+      font-weight: bold;
+      font-family: Tahoma, Arial;
+      cursor: pointer;
+      background: #ece9d8;
+      color: #000;
+      transition: background-color 0.1s;
+    }
+    button:active {
+      border: 1px solid #808080;
+      border-right: 1px solid #dfce56;
+      border-bottom: 1px solid #dfce56;
+    }
+    button:hover {
+      background: #e8e4cc;
+    }
+    .btn-signin, .btn-signup {
+      width: 100%;
+      background-color: #667eea;
+      color: white;
+      border: 1px solid #5568d3;
+      border-right: 2px solid #354a7f;
+      border-bottom: 2px solid #354a7f;
+      margin-top: 20px;
+    }
+    .btn-signin:hover, .btn-signup:hover {
+      background-color: #5568d3;
+    }
+    .btn-signin:active, .btn-signup:active {
+      border: 1px solid #354a7f;
+      border-right: 1px solid #5568d3;
+      border-bottom: 1px solid #5568d3;
+    }
+    .message {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: bold;
+      display: none;
+    }
+    .message.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .message.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .message.loading {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+    .nudge-shake {
+      animation: shake 0.5s;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: 4px;
+    }
+    .status-online {
+      background-color: #4CAF50;
+    }
+    .status-offline {
+      background-color: #9E9E9E;
+    }
+    #chatMessagesContainer {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      border: 1px solid #7f9db9;
+      background: #ffffff;
+      padding: 10px;
+    }
+    .msn-message-wrapper {
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .msn-sender-line {
+      font-weight: bold;
+      color: #222;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .msn-message-text {
+      color: #222;
+      font-size: 12px;
+      padding-left: 12px;
+      word-wrap: break-word;
+    }
+    .chatt-emoji {
+      width: 22px;
+      height: 22px;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    #chatMessageForm {
+      position: relative;
+    }
+    #chatMessageInput {
+      min-width: 0;
+    }
+    .emoji-popup {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 8px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(6, 32px);
+      gap: 4px;
+      padding: 6px;
+      background: #ece9d8;
+      border: 1px solid #0055ea;
+      box-shadow: 2px 2px 0 #808080, inset 1px 1px 0 #fff;
+    }
+    .emoji-popup[hidden] {
+      display: none;
+    }
+    .emoji-popup button {
+      padding: 4px;
+      line-height: 0;
+      background: #f5f4ea;
+      border: 1px solid #aca899;
+    }
+    .emoji-popup button:hover,
+    .emoji-popup button:focus-visible {
+      background: #e3f2fd;
+      outline: 1px solid #0055ea;
+    }
+    .msn-nudge {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      margin: 6px 0;
+    }
+    .friend-item {
+      transition: background-color 0.2s;
+    }
+    .friend-item:hover {
+      background-color: #e3f2fd !important;
+    }
