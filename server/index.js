@@ -54,8 +54,7 @@ app.get('/api/status', (req, res) => {
 async function start() {
   const { pool, getDbStatus } = require('./config/db');
   const supabase = require('./services/supabase');
-  // Lösenordshjälparna behåller projektets befintliga ES-modulformat.
-  const { hashPassword, comparePassword } = await import('../security/passwordUtils.js');
+  const { hashPassword, comparePassword } = require('./utils/passwordUtils');
   const { server } = createApplication({ pool, getDbStatus, supabase, hashPassword, comparePassword });
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, () => {

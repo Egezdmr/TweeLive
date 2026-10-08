@@ -9,7 +9,7 @@
 3. Formuläret skickas till `POST /api/register`.
 4. [auth.js](../server/routes/auth.js) kontrollerar obligatoriska fält och
    om användarnamn eller e-post redan finns.
-5. [passwordUtils.js](../security/passwordUtils.js) skapar en bcrypt-hash
+5. [passwordUtils.js](../server/utils/passwordUtils.js) skapar en bcrypt-hash
    med 10 salt-rundor. Hashen sparas i stället för det vanliga lösenordet.
 
 En **hash** är inte ett krypterat lösenord som servern senare låser upp.

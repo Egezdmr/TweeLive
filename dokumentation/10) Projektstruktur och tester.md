@@ -38,12 +38,13 @@ statiska filer, routrar och Socket.io.
 - [routes/contacts.js](../server/routes/contacts.js): kontaktfunktioner.
 - [routes/conversations.js](../server/routes/conversations.js): chatt och filer.
 - [middleware/requireAuth.js](../server/middleware/requireAuth.js): sessionskontroll.
+- [utils/passwordUtils.js](../server/utils/passwordUtils.js): bcrypt-hashning.
 - [sockets/chatSocket.js](../server/sockets/chatSocket.js): socket-händelser och presence.
 
 Serverns lokala [package.json](../server/package.json) anger CommonJS:
 moduler använder `require` och `module.exports`.
-Lösenordshjälparna behåller sitt tidigare ES-modulformat och laddas med
-dynamisk import.
+Lösenordshjälparna finns i [utils/passwordUtils.js](../server/utils/passwordUtils.js),
+så att de följer med när projektet publiceras.
 
 Routrarna får samma `io` och samma `onlineUsers`-Map.
 Det är viktigt: en ny separat Map i varje fil skulle göra att en rutt
