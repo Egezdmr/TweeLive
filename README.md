@@ -31,6 +31,30 @@ npm install
 npm run dev
 ```
 
+## Publicera en demo med Render
+
+Projektet har en [Render Blueprint-konfiguration](./render.yaml) för en
+Node.js-webbtjänst. För att publicera:
+
+1. Pusha projektet till ett GitHub-repository.
+2. Skapa en ny Blueprint på Render och anslut repositoryt.
+3. Ange de fyra hemliga miljövariabler Render efterfrågar:
+   `SESSION_SECRET`, `DATABASE_URL`, `SUPABASE_URL` och `SUPABASE_ANON_KEY`.
+4. Generera en lång, slumpmässig `SESSION_SECRET`. Använd aldrig
+   sessionsnyckeln som står i utvecklingsfallbacken.
+5. Använd Supabase PostgreSQL-anslutningssträng och Supabase Storage-URL
+   samt nyckel. Lägg inte dessa värden i git eller i `render.yaml`.
+6. Låt Render bygga med `npm ci` och starta med `npm start`.
+
+Render sätter `PORT`. Produktionsläget använder HTTPS-säker sessionscookie
+och litar på Render-proxyn. Databasen och Storage finns redan hos Supabase.
+
+Render Free kan pausa webbtjänsten efter inaktivitet. Första besöket efter
+paus kan därför ta längre tid, och användare kan behöva logga in igen efter
+omstart eftersom nuvarande express-session-store ligger i serverns minne.
+För den här klassdemo-konfigurationen körs en instans; dela inte tjänsten
+över flera instanser utan att först lägga till en beständig sessions-store.
+
 ## Serverstruktur
 
 Serverdelen använder CommonJS via sin lokala [package.json](./server/package.json).

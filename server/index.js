@@ -10,19 +10,25 @@ const createConversationsRouter = require('./routes/conversations');
 const initChatSocket = require('./sockets/chatSocket');
 
 function createApplication({ pool, getDbStatus, supabase, hashPassword, comparePassword }) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET måste anges i produktionsmiljön.');
+  }
+
   const app = express();
+  if (isProduction) app.set('trust proxy', 1);
   const server = http.createServer(app);
   const io = new Server(server);
   const { onlineUsers } = initChatSocket(io);
 
 // Session configuration
 app.use(session({
-  secret: 'tweelive-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'tweelive-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false,
+    secure: isProduction,
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
