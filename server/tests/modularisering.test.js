@@ -136,6 +136,7 @@ test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket',
     }
     if (sql.startsWith('SELECT user_id FROM conversation_participants')) return { rows: [{ user_id: 1 }, { user_id: '2' }, { user_id: 3 }] };
     if (sql.includes('SELECT m.id')) return { rows: [{ id: 9, message_type: typ }] };
+    if (sql.includes('UPDATE messages SET is_read = TRUE')) return { rows: [], rowCount: 1 };
     throw new Error(`Oväntad SQL: ${sql}`);
   });
   await app.login();
@@ -164,9 +165,18 @@ test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket',
   form.append('file', new Blob(['test'], { type: 'text/plain' }), 'test.txt');
   assert.equal((await app.request('/api/conversations/7/upload', { method: 'POST', body: form })).status, 400);
   assert.equal((await app.request('/api/conversations/7/messages')).data.success, true);
+  const lasMarkering = app.anrop.findLast(a => a.sql.includes('UPDATE messages SET is_read = TRUE'));
+  assert.deepEqual(lasMarkering.params, ['7', 1]);
+  assert.match(lasMarkering.sql, /sender_id != \$2/);
+  app.anrop.length = 0;
+  assert.equal((await app.request('/api/conversations/7/read', { method: 'POST' })).data.success, true);
+  assert(app.anrop.some(a => a.sql.includes('UPDATE messages SET is_read = TRUE')));
   assert.equal((await app.request('/api/conversations/7/messages', { method: 'POST', body: { content: ' ' } })).status, 400);
   tillaten = false;
+  app.anrop.length = 0;
   assert.equal((await app.request('/api/conversations/7/messages')).status, 403);
+  assert.equal((await app.request('/api/conversations/7/read', { method: 'POST' })).status, 403);
+  assert(!app.anrop.some(a => a.sql.includes('UPDATE messages')));
   assert.equal((await app.request('/api/conversations/7/messages', { method: 'POST', body: { content: 'Hej' } })).status, 403);
 });
 
@@ -215,6 +225,7 @@ test('Kontakter, förfrågningar och statusmeddelanden behåller sina broadcasts
   assert.equal((await app.request('/api/users/search?q=Van')).data.users[0].id, 2);
   assert.equal((await app.request('/api/users/search')).status, 400);
   assert.deepEqual(Object.keys((await app.request('/api/contacts')).data), ['success', 'friends', 'pendingRequests', 'blocked']);
+  assert.match(app.anrop.find(a => a.sql.includes('AS unread_count')).sql, /m\.is_read = FALSE/);
   assert.equal((await app.request('/api/contacts/request', { method: 'POST', body: { contactId: 2 } })).status, 201);
   assert.equal(app.utskick.at(-1).event, 'friend_request_received');
   app.utskick.length = 0;

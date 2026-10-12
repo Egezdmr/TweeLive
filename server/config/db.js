@@ -28,4 +28,9 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-module.exports = { pool, getDbStatus: () => dbStatus };
+// Säkerställer att lässtatus finns för olästa meddelanden
+async function sakerstallLasstatus() {
+  await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE');
+}
+
+module.exports = { pool, getDbStatus: () => dbStatus, sakerstallLasstatus };

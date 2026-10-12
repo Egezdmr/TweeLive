@@ -21,6 +21,12 @@
         appendMessageBubble(message, true);
         const container = document.getElementById('chatMessagesContainer');
         container.scrollTop = container.scrollHeight;
+        if (isFromOtherUser) {
+          fetch(`/api/conversations/${message.conversation_id}/read`, {
+            method: 'POST',
+            credentials: 'include'
+          }).catch(error => console.error('Mark read error:', error));
+        }
       } else if (isFromOtherUser) {
         const senderId = parseInt(message.sender_id);
         unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;

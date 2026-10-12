@@ -19,21 +19,32 @@ Nyckeln är avsändarens användar-id, inte kontaktpostens id.
 Samma flöde används även för nudge och bilagor eftersom de också
 levereras som `new_message`.
 
-När kontaktlistan byggs om använder `displayFriends()` de befintliga
-räknarna. Märket försvinner därför inte bara för att listan laddas om.
+När kontaktlistan byggs om sätter `displayFriends()` räknaren från
+serverns `unread_count`. Märket stämmer därför även efter F5.
+
+## Sparad lässtatus i databasen
+
+Tabellen `messages` har kolumnen `is_read` (standard `FALSE`). Vid start
+kontrollerar servern att kolumnen finns.
+
+- `GET /api/contacts` räknar olästa meddelanden per vän: meddelanden från
+  vännen, i en konversation där jag är deltagare, med `is_read = FALSE`.
+- `GET /api/conversations/:id/messages` markerar inkommande meddelanden
+  i konversationen som lästa när chatten öppnas.
+- `POST /api/conversations/:id/read` används när ett live-meddelande
+  kommer in i chatten som redan är öppen.
+
+Egna meddelanden räknas aldrig, eftersom avsändaren inte är mottagare.
 
 ## När nollställs räknaren?
 
 När användaren klickar på kontakten och `openChatWith()` körs sätts
-kontaktens räknare till noll direkt. Vid lyckad utloggning töms hela objektet.
+kontaktens räknare till noll direkt, och hämtningen av historiken
+sparar lässtatusen i databasen. Vid utloggning töms det lokala objektet.
 
-Räknarna finns bara i den aktuella sidans minne:
-
-- En sidomladdning tömmer dem.
-- Olika flikar har egna räknare.
-- Det finns ingen sparad lässtatus i databasen.
-- Meddelanden som skickades medan användaren var frånkopplad räknas inte
-  automatiskt som olästa vid nästa inloggning, men kan finnas i historiken.
+- En sidomladdning behåller räknarna.
+- Meddelanden som kom medan användaren var utloggad räknas som olästa
+  vid nästa inloggning.
 
 ## Varför behövdes en fix efter omladdning?
 
@@ -46,7 +57,8 @@ meddelanden därför tas emot utan att chatten först behöver öppnas.
 Detta återställer inte gamla räknare; det gör nya live-händelser möjliga.
 
 **Prova:** välj ingen chatt och låt en vän skicka två meddelanden.
-Brickan ska visa 2. Klicka på vännen: brickan ska döljas.
+Brickan ska visa 2. Tryck F5: brickan ska fortfarande visa 2.
+Klicka på vännen: brickan ska döljas och vara borta även efter F5.
 
 **Git-bakgrund:** `9ed14a2` (steg 12), `74bd114` (steg 13) och
 `a4a563d` (steg 13.1, buggrättning).

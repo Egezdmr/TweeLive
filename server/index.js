@@ -52,7 +52,12 @@ app.get('/api/status', (req, res) => {
 }
 
 async function start() {
-  const { pool, getDbStatus } = require('./config/db');
+  const { pool, getDbStatus, sakerstallLasstatus } = require('./config/db');
+  try {
+    await sakerstallLasstatus();
+  } catch (error) {
+    console.error('Kunde inte kontrollera is_read-kolumnen:', error.message);
+  }
   const supabase = require('./services/supabase');
   const { hashPassword, comparePassword } = require('./utils/passwordUtils');
   const { server } = createApplication({ pool, getDbStatus, supabase, hashPassword, comparePassword });

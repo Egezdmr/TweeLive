@@ -60,7 +60,12 @@ router.get('/api/contacts', requireAuth, async (req, res) => {
 
     // Get friends (accepted contacts - both directions)
     const friendsResult = await pool.query(
-      `SELECT c.id, u.id as user_id, u.username, u.email, u.status_message, c.status, c.created_at
+      `SELECT c.id, u.id as user_id, u.username, u.email, u.status_message, c.status, c.created_at,
+              (SELECT COUNT(*)::int
+               FROM messages m
+               JOIN conversation_participants cp
+                 ON cp.conversation_id = m.conversation_id AND cp.user_id = $1
+               WHERE m.sender_id = u.id AND m.is_read = FALSE) AS unread_count
        FROM contacts c
        JOIN users u ON (
          (c.user_id = $1 AND u.id = c.contact_id) OR

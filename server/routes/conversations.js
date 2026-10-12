@@ -105,6 +105,12 @@ router.get('/api/conversations/:id/messages', requireAuth, async (req, res) => {
       });
     }
 
+    await pool.query(
+      `UPDATE messages SET is_read = TRUE
+       WHERE conversation_id = $1 AND sender_id != $2 AND is_read = FALSE`,
+      [id, userId]
+    );
+
     const result = await pool.query(
       `SELECT m.id, m.conversation_id, m.sender_id, u.username as sender_username,
               m.content, m.message_type, m.created_at
@@ -125,6 +131,41 @@ router.get('/api/conversations/:id/messages', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Kunde inte hämta meddelanden'
+    });
+  }
+});
+
+// Markerar inkommande meddelanden som lästa när chatten redan är öppen
+router.post('/api/conversations/:id/read', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.user.id;
+
+    const participant = await pool.query(
+      `SELECT 1 FROM conversation_participants
+       WHERE conversation_id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+
+    if (participant.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Du har inte åtkomst till denna konversation'
+      });
+    }
+
+    await pool.query(
+      `UPDATE messages SET is_read = TRUE
+       WHERE conversation_id = $1 AND sender_id != $2 AND is_read = FALSE`,
+      [id, userId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Kunde inte markera meddelanden som lästa'
     });
   }
 });

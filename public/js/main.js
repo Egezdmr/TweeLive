@@ -198,7 +198,9 @@
       friends.forEach(friend => {
         const isOnline = onlineUserIds.includes(friend.user_id);
         const statusClass = isOnline ? 'status-online' : 'status-offline';
-        const unreadCount = unreadCounts[friend.user_id] || 0;
+        const isActive = activeChatUser && parseInt(activeChatUser.id) === parseInt(friend.user_id);
+        unreadCounts[friend.user_id] = isActive ? 0 : (parseInt(friend.unread_count, 10) || 0);
+        const unreadCount = unreadCounts[friend.user_id];
         const statusMessage = friend.status_message ? ' - ' + escapeHtml(friend.status_message) : '';
 
         const item = document.createElement('div');
