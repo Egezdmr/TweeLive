@@ -48,13 +48,19 @@
       updateContactStatusUI(userId, status);
     });
 
-    socket.on('user_typing', ({ username }) => {
+    function arAktivKonversation(conversationId) {
+      return activeChatUser && parseInt(activeChatUser.conversationId) === parseInt(conversationId);
+    }
+
+    socket.on('user_typing', ({ conversationId, username }) => {
+      if (!arAktivKonversation(conversationId)) return;
       const indicator = document.getElementById('typingIndicator');
       indicator.textContent = `${username} skriver ett meddelande...`;
       indicator.style.display = 'block';
     });
 
-    socket.on('user_stop_typing', () => {
+    socket.on('user_stop_typing', ({ conversationId } = {}) => {
+      if (!arAktivKonversation(conversationId)) return;
       const indicator = document.getElementById('typingIndicator');
       indicator.style.display = 'none';
       indicator.textContent = '';

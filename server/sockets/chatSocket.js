@@ -19,11 +19,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing_start', ({ conversationId, username }) => {
-    socket.to('conv_' + conversationId).emit('user_typing', { username });
+    socket.to('conv_' + conversationId).emit('user_typing', { conversationId, username });
   });
 
   socket.on('typing_stop', ({ conversationId }) => {
-    socket.to('conv_' + conversationId).emit('user_stop_typing');
+    socket.to('conv_' + conversationId).emit('user_stop_typing', { conversationId });
   });
 
   socket.on('disconnect', () => {

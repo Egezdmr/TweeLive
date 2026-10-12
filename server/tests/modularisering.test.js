@@ -272,9 +272,10 @@ test('Socket-rum, typing och flera flikars presence är oförändrade', () => {
   a.handlers.join_conversation(7);
   assert.deepEqual(a.rooms, ['conv_7']);
   a.handlers.typing_start({ conversationId: 7, username: 'Van' });
-  assert.deepEqual(events.at(-1), { room: 'conv_7', event: 'user_typing', payload: { username: 'Van' } });
+  assert.deepEqual(events.at(-1), { room: 'conv_7', event: 'user_typing', payload: { conversationId: 7, username: 'Van' } });
   a.handlers.typing_stop({ conversationId: 7 });
   assert.equal(events.at(-1).event, 'user_stop_typing');
+  assert.deepEqual(events.at(-1).payload, { conversationId: 7 });
   a.handlers.disconnect();
   assert.equal(onlineUsers.get(2).size, 1);
   b.handlers.disconnect();
