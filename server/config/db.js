@@ -33,4 +33,20 @@ async function sakerstallLasstatus() {
   await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE');
 }
 
-module.exports = { pool, getDbStatus: () => dbStatus, sakerstallLasstatus };
+async function sakerstallKonferenser() {
+  const fs = require('fs');
+  const path = require('path');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(fs.readFileSync(path.join(__dirname, '../../database/conference.sql'), 'utf8'));
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { pool, getDbStatus: () => dbStatus, sakerstallLasstatus, sakerstallKonferenser };

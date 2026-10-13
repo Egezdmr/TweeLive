@@ -96,7 +96,7 @@ test('Autentisering, sessioner, validering och statiska filer behåller sina kon
     throw new Error(`Oväntad SQL: ${sql}`);
   });
   assert.deepEqual((await app.request('/api/auth/me')).data, { success: false, message: 'Inte inloggad' });
-  for (const route of ['/api/contacts', '/api/users/online', '/api/users/search?q=Hej', '/api/conversations/7/messages']) {
+  for (const route of ['/api/contacts', '/api/users/online', '/api/users/search?q=Hej', '/api/conversations/7/messages', '/api/conversations/conferences', '/api/conversations/7/participants']) {
     assert.equal((await app.request(route)).status, 401);
   }
   for (const route of ['/api/conversations', '/api/conversations/7/messages', '/api/conversations/7/upload', '/api/contacts/request']) {
@@ -124,7 +124,8 @@ test('Autentisering, sessioner, validering och statiska filer behåller sina kon
   assert.equal((await app.request('/api/auth/me')).status, 401);
 });
 
-test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket', async t => {
+for (const isGroup of [false, true]) {
+test(`Text, nudge och bilagor skickas en gång per socket (${isGroup ? 'konferens' : 'privat'})`, async t => {
   let typ = 'text';
   let tillaten = true;
   const app = await startaTestserver(t, (sql, params) => {
@@ -134,7 +135,9 @@ test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket',
       typ = params[3];
       return { rows: [{ id: 9, conversation_id: 7, sender_id: 1, content: params[2], message_type: typ, created_at: '2026-10-07T12:00:00Z' }] };
     }
-    if (sql.startsWith('SELECT user_id FROM conversation_participants')) return { rows: [{ user_id: 1 }, { user_id: '2' }, { user_id: 3 }] };
+    if (sql.startsWith('SELECT user_id, c.is_group FROM conversation_participants')) {
+      return { rows: [1, '2', 3].map(user_id => ({ user_id, is_group: isGroup })) };
+    }
     if (sql.includes('SELECT m.id')) return { rows: [{ id: 9, message_type: typ }] };
     if (sql.includes('UPDATE messages SET is_read = TRUE')) return { rows: [], rowCount: 1 };
     throw new Error(`Oväntad SQL: ${sql}`);
@@ -148,6 +151,7 @@ test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket',
     assert.equal(result.status, 201);
     assert.equal(result.data.message.sender_username, 'Jag');
     assert.equal(result.data.message.content, 'Hej');
+    assert.equal(result.data.message.is_group, isGroup);
     assert.deepEqual(app.utskick.map(e => e.socketId).sort(), ['egen', 'van-a', 'van-b']);
     assert(app.utskick.every(e => e.event === 'new_message' && e.payload.message_type === messageType));
   }
@@ -158,6 +162,7 @@ test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket',
     const result = await app.request('/api/conversations/7/upload', { method: 'POST', body: form });
     assert.equal(result.status, 201);
     assert.equal(result.data.message.message_type, mime.startsWith('image/') ? 'image' : 'audio');
+    assert.equal(result.data.message.is_group, isGroup);
     assert.match(app.anrop.findLast(a => a.fil).fil, /^[\w.-]+$/);
     assert.deepEqual(app.utskick.map(e => e.socketId).sort(), ['egen', 'van-a', 'van-b']);
   }
@@ -179,6 +184,33 @@ test('Text, nudge och bilagor skickas exakt en gång till varje deltagarsocket',
   assert(!app.anrop.some(a => a.sql.includes('UPDATE messages')));
   assert.equal((await app.request('/api/conversations/7/messages', { method: 'POST', body: { content: 'Hej' } })).status, 403);
 });
+}
+
+test('Historiken hämtar senaste 50 och returnerar dem i läsordning vid varje omladdning', async t => {
+  const expected = Array.from({ length: 50 }, (_, i) => ({
+    id: i + 16, conversation_id: 7, sender_id: 2, sender_username: 'Van',
+    content: `Meddelande ${i + 16}`, message_type: 'text', created_at: '2026-10-12T08:00:00Z'
+  }));
+  const app = await startaTestserver(t, (sql, params) => {
+    if (sql.includes('WHERE username = $1 OR email = $1')) return anvandare(sql);
+    if (sql.includes('SELECT 1 FROM conversation_participants')) return { rows: [{}] };
+    if (sql.startsWith('UPDATE messages')) return { rows: [] };
+    if (sql.includes('SELECT m.id')) {
+      assert.deepEqual(params, ['7']);
+      assert.match(sql, /ORDER BY m.created_at DESC, m.id DESC\s+LIMIT 50/);
+      assert.match(sql, /ORDER BY created_at ASC, id ASC/);
+      return { rows: expected };
+    }
+    throw new Error(`Oväntad SQL: ${sql}`);
+  });
+  await app.login();
+  for (let reload = 0; reload < 2; reload++) {
+    const result = await app.request('/api/conversations/7/messages');
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.data.messages, expected);
+    assert.equal(result.data.messages.at(-1).id, 65);
+  }
+});
 
 test('Konversationer återanvänds eller skapas med oförändrad transaktion', async t => {
   let finns = true;
@@ -194,6 +226,9 @@ test('Konversationer återanvänds eller skapas med oförändrad transaktion', a
   const existing = await app.request('/api/conversations', { method: 'POST', body: { recipientId: 2 } });
   assert.equal(existing.status, 200);
   assert.equal(existing.data.conversationId, 7);
+  const lookup = app.anrop.find(a => a.sql.includes('SELECT cp1.conversation_id')).sql;
+  assert.match(lookup, /c.is_group = FALSE/);
+  assert.match(lookup, /COUNT\(\*\)[\s\S]*= 2/);
   finns = false;
   const created = await app.request('/api/conversations', { method: 'POST', body: { recipientId: 2 } });
   assert.equal(created.status, 201);
@@ -256,8 +291,10 @@ test('Socket-rum, typing och flera flikars presence är oförändrade', () => {
     const rooms = [];
     const s = {
       id,
+      data: {},
+      rooms: new Set(),
       on(event, handler) { handlers[event] = handler; },
-      join(room) { rooms.push(room); },
+      join(room) { rooms.push(room); s.rooms.add(room); },
       to(room) { return { emit(event, payload) { events.push({ room, event, payload }); } }; }
     };
     connection(s);
@@ -281,4 +318,83 @@ test('Socket-rum, typing och flera flikars presence är oförändrade', () => {
   b.handlers.disconnect();
   assert.equal(onlineUsers.has(2), false);
   assert.deepEqual(events.at(-1), { event: 'user_status_change', payload: { userId: 2, status: 'offline' } });
+});
+
+test('Konferenser är separata, notifieras en gång och kan lämnas utan att ändra privata samtal', async t => {
+  let member = true;
+  let missingUser = false;
+  let failInsert = false;
+  const users = [{ user_id: 1, username: 'Jag' }, { user_id: 2, username: 'Van' }, { user_id: 3, username: 'Ny' }];
+  const app = await startaTestserver(t, (sql, params) => {
+    if (sql.includes('WHERE username = $1 OR email = $1')) return anvandare(sql);
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rows: [] };
+    if (sql.includes('FROM users WHERE id = ANY')) return { rows: missingUser ? users.slice(0, 2) : users };
+    if (sql.startsWith('INSERT INTO conversations (is_group)')) return { rows: [{ id: 99 }] };
+    if (sql.startsWith('INSERT INTO conversation_participants')) {
+      if (failInsert) throw new Error('Testat databasfel');
+      assert.deepEqual(params, [99, [1, 2, 3]]);
+      return { rows: [] };
+    }
+    if (sql.includes('INSERT INTO messages')) {
+      return { rows: [{ id: 5, conversation_id: 99, sender_id: 1, content: params[2], message_type: 'system' }] };
+    }
+    if (sql.startsWith('SELECT id FROM conversations')) return { rows: params[0] === '7' ? [] : [{ id: 99 }] };
+    if (sql.startsWith('DELETE FROM conversation_participants')) {
+      const wasMember = member;
+      member = false;
+      return { rows: wasMember ? [{ user_id: 1 }] : [] };
+    }
+    if (sql.includes('SELECT cp.user_id, u.username')) return { rows: member ? users : users.slice(1) };
+    if (sql.includes('json_agg')) return { rows: member ? [{ conversationId: 99, is_group: true, participants: users }] : [] };
+    if (sql.includes('SELECT 1 FROM conversation_participants')) return { rows: member ? [{}] : [] };
+    if (sql.includes('SELECT m.id')) return { rows: [{ id: 5, content: '* Konferenssamtal startat *', message_type: 'system' }] };
+    if (sql.startsWith('UPDATE messages')) return { rows: [] };
+    throw new Error(`Oväntad SQL: ${sql}`);
+  });
+  const rooms = [];
+  app.io.in = socketId => ({
+    socketsJoin(room) { rooms.push({ socketId, room, action: 'join' }); },
+    socketsLeave(room) { rooms.push({ socketId, room, action: 'leave' }); }
+  });
+  assert.equal((await app.request('/api/conversations/conference', { method: 'POST', body: { participantIds: [1, 2, 3] } })).status, 401);
+  await app.login();
+  app.onlineUsers.set(1, new Set(['egen']));
+  app.onlineUsers.set(2, new Set(['van-a', 'van-b']));
+  app.onlineUsers.set(3, new Set(['ny']));
+  for (const participantIds of [null, [1, 2], [1, '2', 3], [1, -2, 3]]) {
+    assert.equal((await app.request('/api/conversations/conference', { method: 'POST', body: { participantIds } })).status, 400);
+  }
+  missingUser = true;
+  assert.equal((await app.request('/api/conversations/conference', { method: 'POST', body: { participantIds: [1, 2, 3] } })).status, 400);
+  missingUser = false;
+  failInsert = true;
+  assert.equal((await app.request('/api/conversations/conference', { method: 'POST', body: { participantIds: [1, 2, 3] } })).status, 500);
+  assert.equal(app.utskick.length, 0);
+  assert.equal(app.anrop.at(-2).sql, 'ROLLBACK');
+  failInsert = false;
+  const created = await app.request('/api/conversations/conference', { method: 'POST', body: { participantIds: [2, 3, 3] } });
+  assert.equal(created.status, 201);
+  assert.equal(created.data.conversationId, 99);
+  assert.deepEqual(created.data.participants, users);
+  assert.deepEqual(app.utskick.map(e => e.socketId).sort(), ['egen', 'ny', 'van-a', 'van-b']);
+  assert(app.utskick.every(e => e.event === 'conference_created'));
+  assert.equal(rooms.filter(r => r.action === 'join').length, 4);
+  const system = app.anrop.findLast(a => a.sql.includes('INSERT INTO messages'));
+  assert.equal(system.params[2], '* Konferenssamtal startat med: Jag, Van, Ny *');
+  assert(!app.anrop.some(a => /UPDATE conversations|UPDATE messages.*conversation_id/.test(a.sql)));
+  assert.equal((await app.request('/api/conversations/99/participants')).data.participants.length, 3);
+  assert.equal((await app.request('/api/conversations/conferences')).data.conferences[0].conversationId, 99);
+  assert.equal((await app.request('/api/conversations/7/leave', { method: 'POST' })).status, 400);
+  assert.equal(member, true);
+  app.utskick.length = 0;
+  assert.equal((await app.request('/api/conversations/99/leave', { method: 'POST' })).status, 200);
+  assert.equal(rooms.filter(r => r.action === 'leave').length, 1);
+  const messages = app.utskick.filter(e => e.event === 'new_message');
+  assert.deepEqual(messages.map(e => e.socketId).sort(), ['ny', 'van-a', 'van-b']);
+  assert(messages.every(e => e.payload.is_group && e.payload.content === '* Jag har lämnat samtalet *'));
+  assert.equal((await app.request('/api/conversations/99/messages')).status, 403);
+  assert.equal((await app.request('/api/conversations/99/messages', { method: 'POST', body: { content: 'Hej' } })).status, 403);
+  assert.equal((await app.request('/api/conversations/99/participants')).status, 403);
+  assert.equal((await app.request('/api/conversations/99/leave', { method: 'POST' })).status, 403);
+  assert.deepEqual((await app.request('/api/conversations/conferences')).data.conferences, []);
 });

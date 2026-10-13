@@ -17,6 +17,166 @@ const upload = multer({
 function createRouter({ pool, requireAuth, io, onlineUsers, supabase }) {
   const router = express.Router();
 
+  function notifyParticipants(participants, event, payload) {
+    participants.forEach(p => {
+      const socketIds = onlineUsers.get(Number(p.user_id));
+      if (socketIds) {
+        socketIds.forEach(socketId => io.to(socketId).emit(event, payload));
+      }
+    });
+  }
+
+  async function getParticipants(conversationId) {
+    return pool.query(
+      `SELECT cp.user_id, u.username FROM conversation_participants cp
+       JOIN users u ON u.id = cp.user_id
+       WHERE cp.conversation_id = $1 ORDER BY cp.user_id`,
+      [conversationId]
+    );
+  }
+
+router.post('/api/conversations/conference', requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+  const { participantIds } = req.body;
+  if (!Array.isArray(participantIds) ||
+      participantIds.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+    return res.status(400).json({ success: false, message: 'Ogiltig deltagarlista' });
+  }
+  const ids = [...new Set([userId, ...participantIds])];
+  if (ids.length < 3) {
+    return res.status(400).json({ success: false, message: 'En konferens kräver minst tre deltagare' });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const users = await client.query(
+      'SELECT id AS user_id, username FROM users WHERE id = ANY($1::int[]) ORDER BY id', [ids]
+    );
+    if (users.rows.length !== ids.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'En deltagare finns inte' });
+    }
+    const created = await client.query('INSERT INTO conversations (is_group) VALUES (TRUE) RETURNING id');
+    const conversationId = created.rows[0].id;
+    await client.query(
+      `INSERT INTO conversation_participants (conversation_id, user_id)
+       SELECT $1, unnest($2::int[])`, [conversationId, ids]
+    );
+    await client.query(
+      `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+       VALUES ($1, $2, $3, 'system')`,
+      [conversationId, userId, `* Konferenssamtal startat med: ${users.rows.map(u => u.username).join(', ')} *`]
+    );
+    await client.query('COMMIT');
+
+    const payload = { conversationId, is_group: true, participants: users.rows };
+    users.rows.forEach(p => {
+      const socketIds = onlineUsers.get(Number(p.user_id));
+      if (socketIds) {
+        socketIds.forEach(socketId => io.in(socketId).socketsJoin('conv_' + conversationId));
+      }
+    });
+    notifyParticipants(users.rows, 'conference_created', payload);
+    res.status(201).json({ success: true, ...payload });
+  } catch (error) {
+    if (client) await client.query('ROLLBACK');
+    console.error('Create conference error:', error);
+    res.status(500).json({ success: false, message: 'Kunde inte starta konferenssamtalet' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+router.post('/api/conversations/:id/leave', requireAuth, async (req, res) => {
+  const userId = req.session.user.id;
+  const { id } = req.params;
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const group = await client.query(
+      'SELECT id FROM conversations WHERE id = $1 AND is_group = TRUE FOR UPDATE', [id]
+    );
+    if (!group.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Detta är inte ett konferenssamtal' });
+    }
+    const removed = await client.query(
+      'DELETE FROM conversation_participants WHERE conversation_id = $1 AND user_id = $2 RETURNING user_id',
+      [id, userId]
+    );
+    if (!removed.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ success: false, message: 'Du deltar inte i samtalet' });
+    }
+    const result = await client.query(
+      `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+       VALUES ($1, $2, $3, 'system')
+       RETURNING id, conversation_id, sender_id, content, message_type, created_at`,
+      [id, userId, `* ${req.session.user.username} har lämnat samtalet *`]
+    );
+    const participants = await client.query(
+      `SELECT cp.user_id, u.username FROM conversation_participants cp
+       JOIN users u ON u.id = cp.user_id
+       WHERE cp.conversation_id = $1 ORDER BY cp.user_id`, [id]
+    );
+    await client.query('COMMIT');
+    const socketIds = onlineUsers.get(userId);
+    if (socketIds) socketIds.forEach(socketId => io.in(socketId).socketsLeave('conv_' + id));
+    notifyParticipants([{ user_id: userId }], 'conference_left', { conversationId: Number(id) });
+    notifyParticipants(participants.rows, 'conference_participants_changed', {
+      conversationId: Number(id), participants: participants.rows
+    });
+    notifyParticipants(participants.rows, 'new_message', {
+      ...result.rows[0], sender_username: req.session.user.username, is_group: true
+    });
+    res.json({ success: true });
+  } catch (error) {
+    if (client) await client.query('ROLLBACK');
+    console.error('Leave conference error:', error);
+    res.status(500).json({ success: false, message: 'Kunde inte lämna samtalet' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
+router.get('/api/conversations/:id/participants', requireAuth, async (req, res) => {
+  try {
+    const participants = await getParticipants(req.params.id);
+    if (!participants.rows.some(p => Number(p.user_id) === req.session.user.id)) {
+      return res.status(403).json({ success: false, message: 'Du har inte åtkomst till denna konversation' });
+    }
+    res.json({ success: true, participants: participants.rows });
+  } catch (error) {
+    console.error('Get participants error:', error);
+    res.status(500).json({ success: false, message: 'Kunde inte hämta deltagare' });
+  }
+});
+
+router.get('/api/conversations/conferences', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT c.id AS "conversationId", c.is_group,
+              json_agg(json_build_object('user_id', u.id, 'username', u.username) ORDER BY u.id) AS participants
+       FROM conversations c
+       JOIN conversation_participants cp ON cp.conversation_id = c.id
+       JOIN users u ON u.id = cp.user_id
+       WHERE c.is_group = TRUE AND EXISTS (
+         SELECT 1 FROM conversation_participants mine
+         WHERE mine.conversation_id = c.id AND mine.user_id = $1
+       )
+       GROUP BY c.id ORDER BY c.id`,
+      [req.session.user.id]
+    );
+    res.json({ success: true, conferences: result.rows });
+  } catch (error) {
+    console.error('Get conferences error:', error);
+    res.status(500).json({ success: false, message: 'Kunde inte hämta konferenssamtalen' });
+  }
+});
+
 // 7. Hitta eller skapa en konversation med en annan användare
 router.post('/api/conversations', requireAuth, async (req, res) => {
   const { recipientId } = req.body;
@@ -43,7 +203,10 @@ router.post('/api/conversations', requireAuth, async (req, res) => {
       `SELECT cp1.conversation_id
        FROM conversation_participants cp1
        JOIN conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id
+       JOIN conversations c ON c.id = cp1.conversation_id AND c.is_group = FALSE
        WHERE cp1.user_id = $1 AND cp2.user_id = $2
+       AND (SELECT COUNT(*) FROM conversation_participants cp
+            WHERE cp.conversation_id = cp1.conversation_id) = 2
        LIMIT 1`,
       [userId, recipientId]
     );
@@ -107,18 +270,22 @@ router.get('/api/conversations/:id/messages', requireAuth, async (req, res) => {
 
     await pool.query(
       `UPDATE messages SET is_read = TRUE
-       WHERE conversation_id = $1 AND sender_id != $2 AND is_read = FALSE`,
+       WHERE conversation_id = $1 AND sender_id != $2 AND is_read = FALSE
+       AND EXISTS (SELECT 1 FROM conversations WHERE id = $1 AND is_group = FALSE)`,
       [id, userId]
     );
 
     const result = await pool.query(
-      `SELECT m.id, m.conversation_id, m.sender_id, u.username as sender_username,
+      `SELECT * FROM (
+       SELECT m.id, m.conversation_id, m.sender_id, u.username as sender_username,
               m.content, m.message_type, m.created_at
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE m.conversation_id = $1
-       ORDER BY m.created_at ASC
-       LIMIT 50`,
+       ORDER BY m.created_at DESC, m.id DESC
+       LIMIT 50
+       ) AS recent_messages
+       ORDER BY created_at ASC, id ASC`,
       [id]
     );
 
@@ -156,7 +323,8 @@ router.post('/api/conversations/:id/read', requireAuth, async (req, res) => {
 
     await pool.query(
       `UPDATE messages SET is_read = TRUE
-       WHERE conversation_id = $1 AND sender_id != $2 AND is_read = FALSE`,
+       WHERE conversation_id = $1 AND sender_id != $2 AND is_read = FALSE
+       AND EXISTS (SELECT 1 FROM conversations WHERE id = $1 AND is_group = FALSE)`,
       [id, userId]
     );
 
@@ -177,11 +345,14 @@ router.post('/api/conversations/:id/messages', requireAuth, async (req, res) => 
     const { content, messageType = 'text' } = req.body;
     const userId = req.session.user.id;
 
-    if (!content || !content.trim()) {
+    if (typeof content !== 'string' || !content.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Meddelandet kan inte vara tomt'
       });
+    }
+    if (!['text', 'nudge', 'image', 'audio'].includes(messageType)) {
+      return res.status(400).json({ success: false, message: 'Ogiltig meddelandetyp' });
     }
 
     const participant = await pool.query(
@@ -214,18 +385,13 @@ router.post('/api/conversations/:id/messages', requireAuth, async (req, res) => 
 
     // Skicka även direkt till alla anslutna sockets för konversationens deltagare
     const participants = await pool.query(
-      'SELECT user_id FROM conversation_participants WHERE conversation_id = $1',
+      `SELECT user_id, c.is_group FROM conversation_participants cp
+       JOIN conversations c ON c.id = cp.conversation_id WHERE conversation_id = $1`,
       [id]
     );
 
-    participants.rows.forEach(p => {
-      const socketIds = onlineUsers.get(parseInt(p.user_id, 10));
-      if (socketIds) {
-        socketIds.forEach(sId => {
-          io.to(sId).emit('new_message', savedMessage);
-        });
-      }
-    });
+    savedMessage.is_group = participants.rows.some(p => p.is_group);
+    notifyParticipants(participants.rows, 'new_message', savedMessage);
 
     res.status(201).json({
       success: true,
@@ -315,18 +481,13 @@ router.post('/api/conversations/:id/upload', requireAuth, upload.single('file'),
     //io.to('conv_' + id).emit('new_message', savedMessage);
 
     const participants = await pool.query(
-      'SELECT user_id FROM conversation_participants WHERE conversation_id = $1',
+      `SELECT user_id, c.is_group FROM conversation_participants cp
+       JOIN conversations c ON c.id = cp.conversation_id WHERE conversation_id = $1`,
       [id]
     );
 
-    participants.rows.forEach(p => {
-      const socketIds = onlineUsers.get(parseInt(p.user_id, 10));
-      if (socketIds) {
-        socketIds.forEach(sId => {
-          io.to(sId).emit('new_message', savedMessage);
-        });
-      }
-    });
+    savedMessage.is_group = participants.rows.some(p => p.is_group);
+    notifyParticipants(participants.rows, 'new_message', savedMessage);
 
     res.status(201).json({
       success: true,

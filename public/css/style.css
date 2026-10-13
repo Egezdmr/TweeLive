@@ -290,6 +290,37 @@
     .friend-item {
       transition: background-color 0.2s;
     }
+    .chat-header-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #c0c0c0;
+      padding: 4px 8px;
+      border: 1px solid #dfce56;
+      border-bottom-color: #7f7f7f;
+      font-size: 11px;
+    }
+    #activeChatHeader { flex: 1; }
+    .chat-header-bar button, .conference-dialog button, .conference-tabs button {
+      font: 11px Tahoma, Arial, sans-serif;
+      padding: 3px 6px;
+    }
+    .conference-dialog {
+      background: #ece9d8;
+      border: 2px outset #c0c0c0;
+      max-width: 360px;
+      font: 12px Tahoma, Arial, sans-serif;
+    }
+    .conference-dialog::backdrop { background: rgba(0, 0, 0, 0.25); }
+    #conferenceInviteList button { display: block; margin: 6px 0; width: 100%; }
+    .conference-tabs { padding: 4px; }
+    .conference-tabs button { margin: 2px; }
+    .msn-system {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      margin: 6px 0;
+    }
     .friend-item:hover {
       background-color: #e3f2fd !important;
     }

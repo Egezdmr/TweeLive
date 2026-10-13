@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 -- ===== CONVERSATIONS TABLE =====
 CREATE TABLE IF NOT EXISTS conversations (
   id SERIAL PRIMARY KEY,
+  is_group BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -35,7 +36,7 @@ CREATE TABLE IF NOT EXISTS messages (
   conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
-  message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'nudge')),
+  message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'nudge', 'image', 'audio', 'system')),
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

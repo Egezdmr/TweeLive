@@ -19,10 +19,10 @@ function createApplication({ pool, getDbStatus, supabase, hashPassword, compareP
   if (isProduction) app.set('trust proxy', 1);
   const server = http.createServer(app);
   const io = new Server(server);
-  const { onlineUsers } = initChatSocket(io);
+  const { onlineUsers } = initChatSocket(io, pool);
 
 // Session configuration
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'tweelive-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
@@ -31,7 +31,9 @@ app.use(session({
     secure: isProduction,
     maxAge: 24 * 60 * 60 * 1000
   }
-}));
+});
+app.use(sessionMiddleware);
+io.engine.use(sessionMiddleware);
 
   app.use(express.static(path.join(__dirname, '../public')));
   app.use(express.json());
@@ -52,11 +54,13 @@ app.get('/api/status', (req, res) => {
 }
 
 async function start() {
-  const { pool, getDbStatus, sakerstallLasstatus } = require('./config/db');
+  const { pool, getDbStatus, sakerstallLasstatus, sakerstallKonferenser } = require('./config/db');
   try {
     await sakerstallLasstatus();
+    await sakerstallKonferenser();
   } catch (error) {
-    console.error('Kunde inte kontrollera is_read-kolumnen:', error.message);
+    await pool.end();
+    throw error;
   }
   const supabase = require('./services/supabase');
   const { hashPassword, comparePassword } = require('./utils/passwordUtils');

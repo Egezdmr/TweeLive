@@ -29,6 +29,7 @@ kontrollerar servern att kolumnen finns.
 
 - `GET /api/contacts` räknar olästa meddelanden per vän: meddelanden från
   vännen, i en konversation där jag är deltagare, med `is_read = FALSE`.
+  Konferenser räknas inte i den privata kontaktens badge.
 - `GET /api/conversations/:id/messages` markerar inkommande meddelanden
   i konversationen som lästa när chatten öppnas.
 - `POST /api/conversations/:id/read` används när ett live-meddelande

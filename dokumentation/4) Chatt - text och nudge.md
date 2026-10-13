@@ -7,7 +7,9 @@ Den valda användaren sparas i `activeChatUser`.
 
 Frontend skickar `{ recipientId }` till `POST /api/conversations`.
 [conversations.js](../server/routes/conversations.js) letar efter en
-gemensam konversation. Finns den återanvänds dess id. Annars skapas en
+gemensam privat konversation med exakt två deltagare. Konferenser
+återanvänds aldrig här, se [guide 11](<./11) Konferenssamtal.md>).
+Finns den privata chatten återanvänds dess id. Annars skapas en
 konversation och två deltagarposter i en transaktion.
 
 En **transaktion** innebär att de nya databasposterna sparas tillsammans.
@@ -16,8 +18,9 @@ Vid fel försöker servern rulla tillbaka arbetet.
 Frontend går med i socket-rummet `conv_<id>` och hämtar historiken via
 `GET /api/conversations/:id/messages`.
 Servern kontrollerar att den inloggade användaren är deltagare.
-Frågan sorterar i stigande datumordning och tar högst 50 meddelanden:
-det är de första 50 i den ordningen, inte de senaste 50.
+Frågan hämtar de senaste 50 meddelandena och visar dem i stigande
+datumordning. Meddelandets id avgör ordningen om två har samma tid.
+Äldre meddelanden finns kvar i databasen men visas inte i denna historikvy.
 
 ## Skicka vanlig text
 

@@ -20,7 +20,6 @@
               sessionStorage.setItem(`status_${currentUserId}`, data.user.status_message);
               document.getElementById('statusMessageInput').value = data.user.status_message;
             }
-            socket.emit('user_connected', data.user.id);
             showChatContainer(data.user.username);
           } else {
             showAuthContainer();
@@ -43,11 +42,13 @@
         });
 
         if (response.ok) {
-          if (socket && socket.connected) {
-            socket.disconnect();
-            socket.connect();
-          }
+          socket.disconnect();
+          currentUserId = null;
+          currentUsername = null;
+          resetChatArea();
           unreadCounts = {};
+          conferences.clear();
+          updateConferenceTabs();
           showAuthContainer();
           document.getElementById('loginForm').reset();
         }
@@ -327,6 +328,7 @@
     // Visar chattvyn och laddar kontaktlistan
     function showChatContainer(username) {
       currentUsername = username;
+      socket.connect();
       document.getElementById('authContainer').style.display = 'none';
       document.getElementById('chatContainer').style.display = 'flex';
       document.getElementById('usernameDisplay').textContent = username;
@@ -411,7 +413,6 @@
               sessionStorage.setItem(`status_${currentUserId}`, data.user.status_message);
               document.getElementById('statusMessageInput').value = data.user.status_message;
             }
-            socket.emit('user_connected', currentUserId);
             showChatContainer(data.user?.username || identifier);
             loginForm.reset();
           }, 1500);

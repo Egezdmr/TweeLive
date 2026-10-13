@@ -14,6 +14,7 @@ enkelt exempel som går att prova i webbläsaren.
 8. [Emojis och smiley-menyn](<./8) Emojis.md>)
 9. [Aviseringsljud](<./9) Aviseringsljud.md>)
 10. [Projektstruktur och tester](<./10) Projektstruktur och tester.md>)
+11. [Konferenssamtal](<./11) Konferenssamtal.md>)
 
 ## Några ord som återkommer
 
