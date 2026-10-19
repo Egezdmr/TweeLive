@@ -15,10 +15,11 @@ Det gör det lättare att hitta koden utan att ändra vad användaren kan göra.
 | [audio.js](../public/js/audio.js) | Ljudmotor och aviseringsljud. |
 | [emojis.js](../public/js/emojis.js) | Emoji-bilder, textparser och picker. |
 | [chat.js](../public/js/chat.js) | Socket-händelser, aktiv chatt, historik, meddelanden och uppladdning. |
+| [webrtc.js](../public/js/webrtc.js) | Privata videosamtal, webcam-panel och städning av kamera/mikrofon. |
 | [main.js](../public/js/main.js) | Inloggning, formulär, kontaktåtgärder och statusfält. |
 
 Skripten använder `defer` och laddas i ordningen:
-Socket.io → audio → emojis → chat → main.
+Socket.io → audio → emojis → chat → webrtc → main.
 `defer` betyder att skripten körs efter att HTML-strukturen har lästs,
 i den ordning de står i dokumentet.
 
@@ -66,6 +67,16 @@ inte laddas upp till det riktiga molnet.
 
 Ett godkänt test med simulerade tjänster ersätter inte en kontroll av
 riktiga databasinställningar eller Storage-behörigheter.
+
+Webcam-testerna körs med:
+
+```powershell
+node --test server\tests\webrtc.test.js server\tests\webrtc-ui.test.js
+```
+
+De kontrollerar signalering, behörighet, upptaget, flera flikar, ICE-kö
+och städning av mediaspår. De ersätter inte ett kameratest på två enheter
+eller en kontroll av att nätverket tillåter WebRTC utan TURN.
 
 **Git-bakgrund:** uppdelningen gjordes efter funktionsstegen 2–16.
 Guiderna hänvisar därför till de nya filerna, även när äldre commits

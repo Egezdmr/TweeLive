@@ -15,6 +15,7 @@ enkelt exempel som går att prova i webbläsaren.
 9. [Aviseringsljud](<./9) Aviseringsljud.md>)
 10. [Projektstruktur och tester](<./10) Projektstruktur och tester.md>)
 11. [Konferenssamtal](<./11) Konferenssamtal.md>)
+12. [Videosamtal med webcam](<./12) Videosamtal.md>)
 
 ## Några ord som återkommer
 

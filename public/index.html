@@ -166,6 +166,7 @@
         <div id="chatArea" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
           <div class="chat-header-bar">
             <div id="activeChatHeader"></div>
+            <button id="webcamBtn" type="button" hidden>Webcam...</button>
             <button id="inviteConferenceBtn" type="button">Bjud in...</button>
             <button id="leaveConferenceBtn" type="button" hidden>Lämna samtalet</button>
           </div>
@@ -220,10 +221,30 @@
     </div>
   </div>
 
+  <div id="webcamNotice" class="webcam-notice" role="status" aria-live="polite"></div>
+  <section id="webcamIncoming" class="webcam-incoming" role="dialog" aria-labelledby="webcamCaller" hidden>
+    <div class="webcam-title">Inkommande videosamtal</div>
+    <p id="webcamCaller"></p>
+    <button id="webcamAccept" type="button">Acceptera</button>
+    <button id="webcamReject" type="button">Avvisa</button>
+  </section>
+  <section id="webcamPanel" class="webcam-panel" aria-labelledby="webcamTitle" hidden>
+    <div class="webcam-title">
+      <span id="webcamTitle">Webcam</span>
+      <button id="webcamClose" type="button" aria-label="Stäng videosamtalet">X</button>
+    </div>
+    <video id="webcamRemote" width="320" height="240" autoplay playsinline aria-label="Kontaktens kamera"></video>
+    <video id="webcamLocal" width="120" height="90" autoplay playsinline muted aria-label="Din kamera"></video>
+    <p id="webcamStatus" role="status"></p>
+    <button id="webcamPlay" type="button" hidden>Spela video och ljud</button>
+    <button id="webcamHangup" type="button">Avsluta samtalet</button>
+  </section>
+
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="/js/audio.js" defer></script>
   <script src="/js/emojis.js" defer></script>
   <script src="/js/chat.js" defer></script>
+  <script src="/js/webrtc.js" defer></script>
   <script src="/js/main.js" defer></script>
 </body>
 </html>

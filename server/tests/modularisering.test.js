@@ -117,7 +117,7 @@ test('Autentisering, sessioner, validering och statiska filer behåller sina kon
   })).data.success, true);
   assert.equal((await app.request('/api/users', { method: 'POST', body: { username: 'Test', email: 'test@test.se', password: 'abc' } })).data.success, true);
   assert.equal((await app.request('/api/status')).data.database, 'connected');
-  for (const route of ['/', '/css/style.css', '/js/audio.js', '/js/emojis.js', '/js/chat.js', '/js/main.js', '/emojis/tweegee-glad.svg']) {
+  for (const route of ['/', '/css/style.css', '/js/audio.js', '/js/emojis.js', '/js/chat.js', '/js/webrtc.js', '/js/main.js', '/emojis/tweegee-glad.svg']) {
     assert.equal((await app.request(route)).status, 200);
   }
   assert.equal((await app.request('/api/auth/logout', { method: 'POST' })).data.success, true);

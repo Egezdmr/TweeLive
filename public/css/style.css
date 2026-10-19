@@ -321,6 +321,32 @@
       font-style: italic;
       margin: 6px 0;
     }
+    .webcam-panel, .webcam-incoming {
+      position: fixed;
+      z-index: 1000;
+      background: #ece9d8;
+      border: 3px outset #c0c0c0;
+      padding: 8px;
+      box-shadow: 3px 3px 8px #555;
+      font: 12px Tahoma, Arial, sans-serif;
+      max-width: calc(100vw - 32px);
+    }
+    .webcam-panel { right: 12px; top: 100px; width: 336px; }
+    .webcam-incoming { left: 50%; top: 25%; transform: translateX(-50%); z-index: 1001; }
+    .webcam-title {
+      background: linear-gradient(#0058ee, #3593ff);
+      color: white;
+      font-weight: bold;
+      padding: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .webcam-panel video { display: block; background: #111; object-fit: contain; max-width: 100%; margin: 6px auto; }
+    #webcamLocal { margin-right: 0; transform: scaleX(-1); }
+    .webcam-panel button, .webcam-incoming button { font: 11px Tahoma, Arial, sans-serif; padding: 4px 8px; }
+    .webcam-notice { position: fixed; bottom: 8px; left: 12px; background: #ece9d8; font: 12px Tahoma, Arial, sans-serif; max-width: 90vw; }
+    .webcam-notice:empty { display: none; }
     .friend-item:hover {
       background-color: #e3f2fd !important;
     }
