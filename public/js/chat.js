@@ -398,6 +398,7 @@
 
         if (data.success) {
           activeChatUser.conversationId = data.conversationId;
+          updateActiveChatHeaderUI();
           socket.emit('join_conversation', data.conversationId);
           loadConversationMessages(data.conversationId);
         } else {

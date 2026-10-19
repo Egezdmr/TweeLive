@@ -45,6 +45,25 @@ function createClient(fetch = async () => ({ ok: true, json: async () => ({ succ
   return { context, handlers, document, sounds, run: code => vm.runInContext(code, context) };
 }
 
+test('Privat chattrubrik uppdateras när konversations-id är klart så webcam kan visas', async () => {
+  const client = createClient(async url => ({
+    ok: true,
+    json: async () => url === '/api/conversations'
+      ? { success: true, conversationId: 7 }
+      : { success: true, messages: [] }
+  }));
+  client.run(`
+    const headerUpdates = [];
+    const originalHeaderUpdate = updateActiveChatHeaderUI;
+    updateActiveChatHeaderUI = () => {
+      headerUpdates.push(activeChatUser.conversationId);
+      originalHeaderUpdate();
+    };
+  `);
+  await client.run('openChatWith({ user_id: 2, username: "Van", id: 10 })');
+  assert.equal(client.run('headerUpdates.at(-1)'), 7);
+});
+
 test('Gruppmeddelanden påverkar inte privata badges, och systemtext renderas säkert', () => {
   const client = createClient();
   client.run('activeChatUser = { id: 2, conversationId: 7 }');
